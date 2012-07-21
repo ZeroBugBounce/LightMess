@@ -1,25 +1,56 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ZeroBugBounce.LightMess
 {
-	public struct Receipt
+	public class Receipt
 	{
-		public Receipt(object obj)
-		{
+		CancellationTokenSource cancellation;
+		internal Task<Envelope> task;
 
+		public Receipt(CancellationTokenSource cancellationSource)
+		{
+			cancellation = cancellationSource;
+			task = null;
 		}
 
-		public bool Cancel()
+		public void Cancel()
 		{
-			return false;
+			cancellation.Cancel();
+		}
+
+		public Receipt Callback(Action<Task> callback)
+		{
+			task.ContinueWith(callback, TaskContinuationOptions.ExecuteSynchronously).Wait();
+			return this;
+		}
+
+		public Receipt Callback<TReply>(Action<Task, TReply> callback)
+		{
+			task.ContinueWith(t => callback(task, ((Envelope<TReply>)task.Result).Contents)).Wait();
+			return this;
 		}
 
 		public bool Wait(TimeSpan timeToWait)
 		{
-			return false;
+			if (timeToWait.TotalMilliseconds > int.MaxValue)
+			{
+				timeToWait = TimeSpan.FromMilliseconds(int.MaxValue);
+			}
+
+			return task.Wait((int)timeToWait.TotalMilliseconds, cancellation.Token);
+		}
+
+		public void Wait()
+		{
+			task.Wait(cancellation.Token);
 		}
 	}
+
+	public class Receipt<TReply>
+	{
+
+	}
+
 }

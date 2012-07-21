@@ -3,31 +3,40 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace ZeroBugBounce.LightMess
 {
+	/// <summary>
+	/// Post and Handle messages
+	/// </summary>
 	public class Messenger
 	{
-		//public void Send<T>(T message)
-		//{
-		//    var handler = Handlers[typeof(T)] as Action<T>;
-		//    Task.Factory.StartNew(() => handler(message));
-		//}
+		public Receipt Post<T>(T message)
+		{
+			var handler = handlers[typeof(T)] as Handler<T>;
+			var cancellationSource = new CancellationTokenSource();
+			var receipt = new Receipt(cancellationSource);
+			receipt.task = Task.Factory.StartNew<Envelope>(() => handler.Handle(message, cancellationSource.Token), cancellationSource.Token);
+			return receipt;
+		}
 
-		//public void Send<T>() where T : new()
-		//{
-		//    var handler = Handlers[typeof(T)];
-		//    Task.Factory.StartNew(h => ((Action<T>)h)(new T()), handler);
-		//}
+		public void Handle<T>(Action<T, CancellationToken> action)
+		{
+			handlers.Add(typeof(T), new LambdaHandler<T>(action));
+		}
 
-		//public void Handle<T>(Action<T> handler)
-		//{
-		//    Handlers.Add(typeof(T), handler);
-		//}
+		public void Handle<T, TReply>(Func<T, CancellationToken, TReply> function)
+		{
+			handlers.Add(typeof(T), new LambdaHandler<T, TReply>(function));
+		}
 
-		//Dictionary<Type, Delegate> Handlers = new Dictionary<Type, Delegate>();
+		Dictionary<Type, Object> handlers = new Dictionary<Type, Object>();
 	}
 
+	/// <summary>
+	/// Static convenience for a Messenger instance
+	/// </summary>
 	public static class Message
 	{
 		static Messenger messenger;
@@ -38,14 +47,17 @@ namespace ZeroBugBounce.LightMess
 
 		public static Receipt Post<T>(T message)
 		{
-			return default(Receipt);
+			return messenger.Post(message);
 		}
 
-		public static Receipt Post<T>(T message, Action callback)
+		public static void Handle<T>(Action<T, CancellationToken> action)
 		{
-			return default(Receipt);
+			messenger.Handle(action);
 		}
 
-
+		public static void Handle<T, TReply>(Func<T, CancellationToken, TReply> function)
+		{
+			messenger.Handle<T, TReply>(function);
+		}
 	}
 }
