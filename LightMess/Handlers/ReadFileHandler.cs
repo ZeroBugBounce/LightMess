@@ -38,7 +38,8 @@ namespace ZeroBugBounce.LightMess
 
 		class ReadState
 		{
-			public ReadState(string path, FileStream inStream, byte[] buffer, MemoryStream outStream, TaskCompletionSource<Envelope> taskCompletionSource) 
+			public ReadState(string path, FileStream inStream, byte[] buffer, MemoryStream outStream, 
+				TaskCompletionSource<Envelope> taskCompletionSource) 
 			{
 				Path = path;
 				InStream = inStream;
