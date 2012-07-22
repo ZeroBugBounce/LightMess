@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace ZeroBugBounce.LightMess
 {
 	public abstract class Handler<T>
 	{
-		public abstract Envelope Handle(T message, CancellationToken cancellation);
+		public abstract Task<Envelope> Handle(T message, CancellationToken cancellation);
 	}
 
 	public abstract class Handler<T, TReply> : Handler<T>
@@ -24,10 +25,13 @@ namespace ZeroBugBounce.LightMess
 			handler = action;
 		}
 
-		public override Envelope Handle(T message, CancellationToken cancellation)
+		public override Task<Envelope> Handle(T message, CancellationToken cancellation)
 		{
-			handler(message, cancellation);
-			return null; // no reply so nothing needed here
+			return Task.Factory.StartNew<Envelope>(() =>
+			{
+				handler(message, cancellation);
+				return null; // no reply so nothing needed here
+			});
 		}
 	}
 
@@ -38,9 +42,12 @@ namespace ZeroBugBounce.LightMess
 		{
 			handler = function;
 		}
-		public override Envelope Handle(T message, CancellationToken cancellation)
+		public override Task<Envelope> Handle(T message, CancellationToken cancellation)
 		{
-			return new Envelope<TReply>(handler(message, cancellation));
+			return Task.Factory.StartNew<Envelope>(() =>
+			{
+				return new Envelope<TReply>(handler(message, cancellation));
+			});			
 		}
 	}
 }

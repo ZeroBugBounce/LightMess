@@ -12,12 +12,19 @@ namespace ZeroBugBounce.LightMess
 	/// </summary>
 	public class Messenger
 	{
+		ILock handlerLock = new SpinningHybridLock(spinCount: 1200);
 		public Receipt Post<T>(T message)
 		{
-			var handler = handlers[typeof(T)] as Handler<T>;
+			Handler<T> handler;				
+			handlerLock.Enter();
+			handler = handlers[typeof(T)] as Handler<T>;
+			handlerLock.Leave();
+
 			var cancellationSource = new CancellationTokenSource();
 			var receipt = new Receipt(cancellationSource);
-			receipt.task = Task.Factory.StartNew<Envelope>(() => handler.Handle(message, cancellationSource.Token), cancellationSource.Token);
+
+			receipt.task = handler.Handle(message, cancellationSource.Token);
+
 			return receipt;
 		}
 
@@ -29,6 +36,13 @@ namespace ZeroBugBounce.LightMess
 		public void Handle<T, TReply>(Func<T, CancellationToken, TReply> function)
 		{
 			handlers.Add(typeof(T), new LambdaHandler<T, TReply>(function));
+		}
+
+		public void AddHandler<T>(Handler<T> handler)
+		{
+			handlerLock.Enter();
+			handlers.Add(typeof(T), handler);
+			handlerLock.Leave();
 		}
 
 		Dictionary<Type, Object> handlers = new Dictionary<Type, Object>();
@@ -58,6 +72,11 @@ namespace ZeroBugBounce.LightMess
 		public static void Handle<T, TReply>(Func<T, CancellationToken, TReply> function)
 		{
 			messenger.Handle<T, TReply>(function);
+		}
+
+		public static void AddHandler<T>(Handler<T> handler)
+		{
+			messenger.AddHandler(handler);
 		}
 	}
 }
