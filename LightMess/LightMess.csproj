@@ -34,12 +34,15 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Envelope.cs" />
     <Compile Include="Handler.cs" />
     <Compile Include="Handlers\HttpHandler.cs" />
     <Compile Include="Handlers\ReadFileHandler.cs" />
+    <Compile Include="Handlers\SqlNonQueryHandler.cs" />
+    <Compile Include="Handlers\SqlReaderHandler.cs" />
     <Compile Include="Handlers\WriteFileHandler.cs" />
     <Compile Include="Locks\ILock.cs" />
     <Compile Include="Locks\MonitorWrapLock.cs" />

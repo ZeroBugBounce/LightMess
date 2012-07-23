@@ -31,7 +31,7 @@ namespace ZeroBugBounce.LightMess
 			{
 				handler(message, cancellation);
 				return null; // no reply so nothing needed here
-			});
+			}, cancellation);
 		}
 	}
 
@@ -47,7 +47,7 @@ namespace ZeroBugBounce.LightMess
 			return Task.Factory.StartNew<Envelope>(() =>
 			{
 				return new Envelope<TReply>(handler(message, cancellation));
-			});			
+			}, cancellation);			
 		}
 	}
 }

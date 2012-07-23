@@ -12,7 +12,13 @@ namespace ZeroBugBounce.LightMess
 			var inStream = new FileStream(message.Path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
 			var outStream = new MemoryStream(4096);
 			var buffer = new byte[4096];
+
 			var taskCompletionSource = new TaskCompletionSource<Envelope>();
+			cancellation.Register((tcs) => 
+			{ 
+				((TaskCompletionSource<Envelope>)tcs).TrySetCanceled();
+				Console.WriteLine("((TaskCompletionSource<Envelope>)tcs).TrySetCanceled();");
+			}, taskCompletionSource);
 
 			inStream.BeginRead(buffer, 0, 4096, EndRead, new ReadState(message.Path, inStream, buffer, outStream, taskCompletionSource));
 
@@ -22,17 +28,27 @@ namespace ZeroBugBounce.LightMess
 		void EndRead(IAsyncResult asyncResult)
 		{
 			ReadState readState = asyncResult.AsyncState as ReadState;
+			var task = readState.TaskCompletionSource.Task;
+			if (task.IsCanceled) { readState.InStream.Dispose(); return; }
+
 			int bytesRead = readState.InStream.EndRead(asyncResult);
+			if (task.IsCanceled) { readState.InStream.Dispose(); return; }
 
 			if (bytesRead > 0)
 			{
+				if (task.IsCanceled) { readState.InStream.Dispose(); return; }
 				readState.OutStream.Write(readState.Buffer, 0, bytesRead);
+
+				if (task.IsCanceled) { readState.InStream.Dispose(); return; }
 				readState.InStream.BeginRead(readState.Buffer, 0, 4096, EndRead, readState);
 			}
 			else
 			{
+				if (task.IsCanceled) { readState.InStream.Dispose(); return; }
 				readState.TaskCompletionSource.SetResult(new Envelope<ReadFileResponse>(
 					new ReadFileResponse(readState.Path, readState.OutStream.ToArray())));
+
+				Console.WriteLine("readState.TaskCompletionSource.SetResult");
 			}
 		}
 

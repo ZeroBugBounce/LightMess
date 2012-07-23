@@ -15,9 +15,10 @@ namespace ZeroBugBounce.LightMess
 			task = null;
 		}
 
-		public void Cancel()
+		public Receipt Cancel()
 		{
 			cancellation.Cancel();
+			return this;
 		}
 
 		public Receipt Callback(Action<Task> callback)
@@ -28,7 +29,14 @@ namespace ZeroBugBounce.LightMess
 
 		public Receipt Callback<TReply>(Action<Task, TReply> callback)
 		{
-			task.ContinueWith(t => callback(task, ((Envelope<TReply>)task.Result).Contents)).Wait();
+			if (task.IsCanceled)
+			{
+				task.ContinueWith(t => callback(task, default(TReply))).Wait();
+			}
+			else
+			{
+				task.ContinueWith(t => callback(task, ((Envelope<TReply>)task.Result).Contents)).Wait();
+			}
 			return this;
 		}
 

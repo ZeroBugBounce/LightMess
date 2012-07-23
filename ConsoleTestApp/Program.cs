@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -13,9 +14,60 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			HttpRequestIOCompletionPortTests();
+			SqlDataReaderHandlerTest();
+			//SqlNonQueryHandlerTest();
+			//HttpRequestIOCompletionPortTests();
 			//MessagingSpeedTest();
 			//FileStreamIOCompletionPortsTest();
+		}
+
+		static void SqlDataReaderHandlerTest()
+		{
+			Message.Init(new Messenger());
+			Message.AddHandler(new SqlReaderHandler());
+
+			var connection = new SqlConnection(@"Data Source=howard-jr\SQLEXPRESS;
+				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true");
+
+			connection.Open();
+
+			var receipt = Message.Post(new SqlReaderRequest("SELECT * FROM [GenderByAge]", connection));
+
+			receipt.Callback<SqlReaderResponse>((t, r) =>
+			{
+				var reader = r.DataReader;
+				while (reader.Read())
+				{
+					Console.WriteLine(reader.GetString(reader.GetOrdinal("Name")));
+				}
+			});
+
+			receipt.Wait();
+			connection.Close();
+		}
+
+		static void SqlNonQueryHandlerTest()
+		{
+			Message.Init(new Messenger());
+			Message.AddHandler(new SqlNonQueryHandler());
+
+			var connection = new SqlConnection(@"Data Source=howard-jr\SQLEXPRESS;
+				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true");
+
+			connection.Open();
+
+			var receipt = Message.Post(new SqlNonQueryRequest(@"update GenderByAge 
+set Name = Name
+FROM GenderByAge", connection));
+			receipt.Callback<SqlNonQueryResponse>((t, r) =>
+			{
+				Console.WriteLine("{0} records affected", r.AffectedRecords);
+			});
+
+			receipt.Wait();
+			connection.Close();
+
+			Thread.Sleep(1000);			
 		}
 
 		static void HttpRequestIOCompletionPortTests()
@@ -58,7 +110,7 @@ namespace ConsoleTestApp
 			timer.Start();
 			for (int i = 0; i < iterations; i++)
 			{
-				Message.Post(new HttpRequest("http://news.google.com/"))
+				Message.Post(new HttpRequest("http://www.tradingtechnologies.com/"))
 					.Callback<HttpResponse>((t, r) =>
 					{
 						Console.WriteLine("Received {0:###,###} bytes starting with {1}", r.Data.Length,
