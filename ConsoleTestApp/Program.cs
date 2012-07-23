@@ -14,14 +14,14 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			SqlDataReaderHandlerTest();
+			SqlReaderHandlerTest();
 			//SqlNonQueryHandlerTest();
 			//HttpRequestIOCompletionPortTests();
 			//MessagingSpeedTest();
 			//FileStreamIOCompletionPortsTest();
 		}
 
-		static void SqlDataReaderHandlerTest()
+		static void SqlReaderHandlerTest()
 		{
 			Message.Init(new Messenger());
 			Message.AddHandler(new SqlReaderHandler());
