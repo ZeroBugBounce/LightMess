@@ -19,15 +19,15 @@ namespace Testing
 			byte[] output = null;
 
 			Message.Init(new Messenger());
-			Message.AddHandler(new ReadFileHandler());
+			Message.AddHandler(new FileReadHandler());
 
 			var tempFile = Path.GetTempFileName();
 
 			string guid = "{8A265D86-D763-4046-BACE-3531BA3DE517}";
 			File.WriteAllText(tempFile, guid);
 
-			Message.Post(new ReadFileRequest(tempFile))
-				.Callback<ReadFileResponse>((t, r) =>
+			Message.Post(new FileReadRequest(tempFile))
+				.Callback<FileReadResponse>((t, r) =>
 				{
 					callbackWasCalled = true;
 					output = r.Contents;
@@ -45,15 +45,15 @@ namespace Testing
 		public void Error_reading_a_file()
 		{
 			Message.Init(new Messenger());
-			Message.AddHandler(new ReadFileHandler());
+			Message.AddHandler(new FileReadHandler());
 
 			var tempFile = Path.GetTempFileName();
 			File.WriteAllText(tempFile, Guid.NewGuid().ToString());
 
 			var unsharingStream = new FileStream(tempFile, FileMode.Open, FileAccess.Read, FileShare.None);
 
-			var receipt = Message.Post(new ReadFileRequest(tempFile));
-			receipt.Callback<ReadFileResponse>((t, r) =>
+			var receipt = Message.Post(new FileReadRequest(tempFile));
+			receipt.Callback<FileReadResponse>((t, r) =>
 			{
 
 			})
@@ -69,16 +69,16 @@ namespace Testing
 			byte[] output = null;
 
 			Message.Init(new Messenger());
-			Message.AddHandler(new ReadFileHandler());
+			Message.AddHandler(new FileReadHandler());
 
 			var tempFile = Path.GetTempFileName();
 
 			string guid = "{8A265D86-D763-4046-BACE-3531BA3DE517}";
 			File.WriteAllText(tempFile, guid);
 
-			var receipt = Message.Post(new ReadFileRequest(tempFile)).Cancel();
+			var receipt = Message.Post(new FileReadRequest(tempFile)).Cancel();
 
-			receipt.Callback<ReadFileResponse>((t, r) =>
+			receipt.Callback<FileReadResponse>((t, r) =>
 				{
 					callbackWasCalled = true;
 					wasCancelled = t.IsCanceled;
@@ -107,12 +107,12 @@ namespace Testing
 		{
 			bool callbackWasCalled = false;
 			Message.Init(new Messenger());
-			Message.AddHandler(new WriteFileHandler());
+			Message.AddHandler(new FileWriteHandler());
 
 			string guid = "{70E2D385-26C3-4EE8-9A92-66FBA19DF9A8}";
 			var tempFile = Path.Combine(Path.GetTempPath(), guid + ".txt");
 
-			Message.Post(new WriteFileRequest(tempFile, Encoding.Default.GetBytes(guid)))
+			Message.Post(new FileWriteRequest(tempFile, Encoding.Default.GetBytes(guid)))
 				.Callback(t =>
 				{
 					callbackWasCalled = true;

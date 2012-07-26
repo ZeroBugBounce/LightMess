@@ -23,8 +23,7 @@ namespace ZeroBugBounce.LightMess
 			var cancellationSource = new CancellationTokenSource();
 			var receipt = new Receipt(cancellationSource);
 
-			receipt.task = handler.Handle(message, cancellationSource.Token);
-
+			receipt.Task = handler.Handle(message, cancellationSource.Token);
 			return receipt;
 		}
 
@@ -33,14 +32,15 @@ namespace ZeroBugBounce.LightMess
 			handlers.Add(typeof(T), new LambdaHandler<T>(action));
 		}
 
-		public void Handle<T, TReply>(Func<T, CancellationToken, TReply> function)
+		public void Handle<T, TResult>(Func<T, CancellationToken, TResult> function)
 		{
-			handlers.Add(typeof(T), new LambdaHandler<T, TReply>(function));
+			handlers.Add(typeof(T), new LambdaHandler<T, TResult>(function));
 		}
 
 		public void AddHandler<T>(Handler<T> handler)
 		{
 			handlerLock.Enter();
+			handler.Message = this;
 			handlers.Add(typeof(T), handler);
 			handlerLock.Leave();
 		}
@@ -69,9 +69,9 @@ namespace ZeroBugBounce.LightMess
 			messenger.Handle(action);
 		}
 
-		public static void Handle<T, TReply>(Func<T, CancellationToken, TReply> function)
+		public static void Handle<T, TResult>(Func<T, CancellationToken, TResult> function)
 		{
-			messenger.Handle<T, TReply>(function);
+			messenger.Handle<T, TResult>(function);
 		}
 
 		public static void AddHandler<T>(Handler<T> handler)

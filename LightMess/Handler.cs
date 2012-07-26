@@ -9,10 +9,11 @@ namespace ZeroBugBounce.LightMess
 {
 	public abstract class Handler<T>
 	{
+		public Messenger Message { get; internal set; }
 		public abstract Task<Envelope> Handle(T message, CancellationToken cancellation);
 	}
 
-	public abstract class Handler<T, TReply> : Handler<T>
+	public abstract class Handler<T, TResult> : Handler<T>
 	{
 
 	}
@@ -35,18 +36,19 @@ namespace ZeroBugBounce.LightMess
 		}
 	}
 
-	public class LambdaHandler<T, TReply> : Handler<T, TReply>
+	public class LambdaHandler<T, TResult> : Handler<T, TResult>
 	{
-		Func<T, CancellationToken, TReply> handler;
-		public LambdaHandler(Func<T, CancellationToken, TReply> function)
+		Func<T, CancellationToken, TResult> handler;
+		public LambdaHandler(Func<T, CancellationToken, TResult> function)
 		{
 			handler = function;
 		}
+
 		public override Task<Envelope> Handle(T message, CancellationToken cancellation)
 		{
 			return Task.Factory.StartNew<Envelope>(() =>
 			{
-				return new Envelope<TReply>(handler(message, cancellation));
+				return new Envelope<TResult>(handler(message, cancellation));
 			}, cancellation);			
 		}
 	}

@@ -76,9 +76,16 @@ namespace Testing
 		}
 
 		[Fact]
-		public void Get_http()
+		public void Handle_exceptions()
 		{
+			Message.Init(new Messenger());
+			Message.Handle<object>((t, c) =>
+			{
+				throw new InvalidOperationException();
+			});
 
+			var receipt = Message.Post(new object());
+			
 		}
 
 		class Account { }

@@ -7,12 +7,13 @@ namespace ZeroBugBounce.LightMess
 	public class Receipt
 	{
 		CancellationTokenSource cancellation;
-		internal Task<Envelope> task;
+
+		public Task<Envelope> Task { get; internal set; }
 
 		public Receipt(CancellationTokenSource cancellationSource)
 		{
 			cancellation = cancellationSource;
-			task = null;
+			Task = null;
 		}
 
 		public Receipt Cancel()
@@ -23,21 +24,26 @@ namespace ZeroBugBounce.LightMess
 
 		public Receipt Callback(Action<Task> callback)
 		{
-			task.ContinueWith(callback, TaskContinuationOptions.ExecuteSynchronously).Wait();
+			Task.ContinueWith(callback, TaskContinuationOptions.ExecuteSynchronously).Wait();
 			return this;
 		}
 
-		public Receipt Callback<TReply>(Action<Task, TReply> callback)
+		public Receipt Callback<TResult>(Action<Task, TResult> callback)
 		{
-			if (task.IsCanceled)
+			if (Task.IsCanceled)
 			{
-				task.ContinueWith(t => callback(task, default(TReply))).Wait();
+				Task.ContinueWith(t => callback(Task, default(TResult))).Wait();
 			}
 			else
 			{
-				task.ContinueWith(t => callback(task, ((Envelope<TReply>)task.Result).Contents)).Wait();
+				Task.ContinueWith(t => callback(Task, ((Envelope<TResult>)Task.Result).Contents)).Wait();
 			}
 			return this;
+		}
+
+		public TResult Result<TResult>()
+		{
+			return ((Envelope<TResult>)Task.Result).Contents;
 		}
 
 		public bool Wait(TimeSpan timeToWait)
@@ -47,18 +53,12 @@ namespace ZeroBugBounce.LightMess
 				timeToWait = TimeSpan.FromMilliseconds(int.MaxValue);
 			}
 
-			return task.Wait((int)timeToWait.TotalMilliseconds, cancellation.Token);
+			return Task.Wait((int)timeToWait.TotalMilliseconds, cancellation.Token);
 		}
 
 		public void Wait()
 		{
-			task.Wait(cancellation.Token);
+			Task.Wait(cancellation.Token);
 		}
 	}
-
-	public class Receipt<TReply>
-	{
-
-	}
-
 }

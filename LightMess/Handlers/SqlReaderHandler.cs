@@ -15,21 +15,38 @@ namespace ZeroBugBounce.LightMess
 		{
 			var taskCompletionSource = new TaskCompletionSource<Envelope>();
 
-			var command = message.Connection.CreateCommand();
-			command.CommandText = message.CommandText;
+			try
+			{
+				var command = message.Connection.CreateCommand();
+				command.CommandText = message.CommandText;
 
-			command.BeginExecuteReader(EndExecuteReader, new SqlReaderState(command, taskCompletionSource));
+				command.BeginExecuteReader(EndExecuteReader, new SqlReaderState(command, taskCompletionSource));
 
-			return taskCompletionSource.Task;
+				return taskCompletionSource.Task;
+			}
+			catch (Exception ex)
+			{
+				taskCompletionSource.SetException(ex);
+			}
+
+			return null;
 		}
 
 		void EndExecuteReader(IAsyncResult asyncResult)
 		{
 			var sqlReaderState = asyncResult.AsyncState as SqlReaderState;
-			var sqlReader = sqlReaderState.Command.EndExecuteReader(asyncResult);
 
-			sqlReaderState.TaskCompletionSource.TrySetResult(
-				new Envelope<SqlReaderResponse>(new SqlReaderResponse(sqlReader)));
+			try
+			{
+				var sqlReader = sqlReaderState.Command.EndExecuteReader(asyncResult);
+
+				sqlReaderState.TaskCompletionSource.TrySetResult(
+					new Envelope<SqlReaderResponse>(new SqlReaderResponse(sqlReader)));
+			}
+			catch (Exception ex)
+			{
+				sqlReaderState.TaskCompletionSource.SetException(ex);
+			}
 		}
 
 		class SqlReaderState

@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using ZeroBugBounce.LightMess;
@@ -14,11 +12,24 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			SqlReaderHandlerTest();
+			//throw new InvalidOperationException();
+			//ErrorHandling();
+			//SqlReaderHandlerTest();
 			//SqlNonQueryHandlerTest();
 			//HttpRequestIOCompletionPortTests();
-			//MessagingSpeedTest();
+			MessagingSpeedTest();
 			//FileStreamIOCompletionPortsTest();
+		}
+
+		static void ErrorHandling()
+		{
+			var messenger = new Messenger();
+			messenger.Handle<int, int>((m, c) =>
+			{
+				throw new InvalidOperationException();
+			});
+
+			messenger.Post(123);
 		}
 
 		static void SqlReaderHandlerTest()
@@ -35,11 +46,11 @@ namespace ConsoleTestApp
 
 			receipt.Callback<SqlReaderResponse>((t, r) =>
 			{
-				var reader = r.DataReader;
-				while (reader.Read())
-				{
-					Console.WriteLine(reader.GetString(reader.GetOrdinal("Name")));
-				}
+			    var reader = r.DataReader;
+			    while (reader.Read())
+			    {
+			        Console.WriteLine(reader.GetString(reader.GetOrdinal("Name")));
+			    }
 			});
 
 			receipt.Wait();
@@ -151,7 +162,7 @@ FROM GenderByAge", connection));
 		{
 			int iterations = 1000;
 			var messenger = new Messenger();
-			messenger.AddHandler(new WriteFileHandler());
+			messenger.AddHandler(new FileWriteHandler());
 
 			bool measureThreads = true;
 
@@ -187,7 +198,7 @@ FROM GenderByAge", connection));
 			timer.Start();
 			for (int i = 0; i < iterations; i++)
 			{
-				var receipt = messenger.Post(new WriteFileRequest(Path.GetTempFileName(), Encoding.Default.GetBytes(Guid.NewGuid().ToString())));
+				var receipt = messenger.Post(new FileWriteRequest(Path.GetTempFileName(), Encoding.Default.GetBytes(Guid.NewGuid().ToString())));
 				Thread.Sleep(0);
 			}
 			timer.Stop();

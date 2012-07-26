@@ -40,10 +40,10 @@
     <Compile Include="Envelope.cs" />
     <Compile Include="Handler.cs" />
     <Compile Include="Handlers\HttpHandler.cs" />
-    <Compile Include="Handlers\ReadFileHandler.cs" />
+    <Compile Include="Handlers\FileReadHandler.cs" />
     <Compile Include="Handlers\SqlNonQueryHandler.cs" />
     <Compile Include="Handlers\SqlReaderHandler.cs" />
-    <Compile Include="Handlers\WriteFileHandler.cs" />
+    <Compile Include="Handlers\FileWriteHandler.cs" />
     <Compile Include="Locks\ILock.cs" />
     <Compile Include="Locks\MonitorWrapLock.cs" />
     <Compile Include="Locks\NoSpinHybridLock.cs" />

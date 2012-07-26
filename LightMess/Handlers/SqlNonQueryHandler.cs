@@ -15,33 +15,64 @@ namespace ZeroBugBounce.LightMess
 		{
 			var taskCompletionSource = new TaskCompletionSource<Envelope>();
 
-			var command = message.Connection.CreateCommand();
-			command.CommandText = message.CommandText;
+			try
+			{
+				var command = message.Connection.CreateCommand();
+				command.CommandText = message.CommandText;
 
-			command.BeginExecuteNonQuery(EndExecuteNonQuery, new SqlNonQueryState(command, taskCompletionSource));
-			
-			return taskCompletionSource.Task;
+				if (cancellation.IsCancellationRequested)
+				{
+					taskCompletionSource.TrySetCanceled();
+					return taskCompletionSource.Task;
+				}
+
+				command.BeginExecuteNonQuery(EndExecuteNonQuery, new SqlNonQueryState(command, taskCompletionSource, cancellation));
+
+				return taskCompletionSource.Task;
+			}
+			catch (Exception ex)
+			{
+				taskCompletionSource.SetException(ex);
+			}
+
+			return null;
 		}
 
 		void EndExecuteNonQuery(IAsyncResult asyncResult)
 		{
 			var sqlNonQueryState = asyncResult.AsyncState as SqlNonQueryState;
-			int affectedRecords = sqlNonQueryState.Command.EndExecuteNonQuery(asyncResult);
+			try
+			{
+				if (sqlNonQueryState.CancellationToken.IsCancellationRequested)
+				{
+					sqlNonQueryState.TaskCompletionSource.TrySetCanceled();
+					return;
+				}
 
-			sqlNonQueryState.TaskCompletionSource.TrySetResult(new Envelope<SqlNonQueryResponse>(
-				new SqlNonQueryResponse(affectedRecords)));
+				int affectedRecords = sqlNonQueryState.Command.EndExecuteNonQuery(asyncResult);
+
+				sqlNonQueryState.TaskCompletionSource.TrySetResult(new Envelope<SqlNonQueryResponse>(
+					new SqlNonQueryResponse(affectedRecords)));
+			}
+			catch (Exception ex)
+			{
+				sqlNonQueryState.TaskCompletionSource.TrySetException(ex);
+			}
 		}
 
 		class SqlNonQueryState
 		{
-			public SqlNonQueryState(SqlCommand command, TaskCompletionSource<Envelope> taskCompletionEventSource)
+			public SqlNonQueryState(SqlCommand command, TaskCompletionSource<Envelope> taskCompletionEventSource,
+				CancellationToken cancellationToken)
 			{
 				Command = command;
 				TaskCompletionSource = taskCompletionEventSource;
+				CancellationToken = cancellationToken;
 			}
 
 			public SqlCommand Command { get; private set; }
 			public TaskCompletionSource<Envelope> TaskCompletionSource { get; set; }
+			public CancellationToken CancellationToken { get; private set; }
 		}
 	}
 
