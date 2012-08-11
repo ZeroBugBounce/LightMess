@@ -17,16 +17,13 @@ namespace ZeroBugBounce.LightMess
 
 			try
 			{
-				var command = message.Connection.CreateCommand();
-				command.CommandText = message.CommandText;
-
 				if (cancellation.IsCancellationRequested)
 				{
 					taskCompletionSource.TrySetCanceled();
 					return taskCompletionSource.Task;
 				}
 
-				command.BeginExecuteNonQuery(EndExecuteNonQuery, new SqlNonQueryState(command, taskCompletionSource, cancellation));
+				message.Command.BeginExecuteNonQuery(EndExecuteNonQuery, new SqlNonQueryState(message.Command, taskCompletionSource, cancellation));
 
 				return taskCompletionSource.Task;
 			}
@@ -46,6 +43,7 @@ namespace ZeroBugBounce.LightMess
 				if (sqlNonQueryState.CancellationToken.IsCancellationRequested)
 				{
 					sqlNonQueryState.TaskCompletionSource.TrySetCanceled();
+					sqlNonQueryState.Command.Cancel();
 					return;
 				}
 
@@ -78,13 +76,13 @@ namespace ZeroBugBounce.LightMess
 
 	public class SqlNonQueryRequest
 	{
-		public SqlNonQueryRequest(string commandText, SqlConnection connection)
+		public SqlNonQueryRequest(SqlCommand command, SqlConnection connection)
 		{
-			CommandText = commandText;
+			Command = command;
 			Connection = connection;
 		}
 
-		public string CommandText { get; private set; }
+		public SqlCommand Command { get; private set; }
 		public SqlConnection Connection { get; private set; }
 	}
 

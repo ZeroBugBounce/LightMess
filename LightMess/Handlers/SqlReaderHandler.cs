@@ -17,9 +17,7 @@ namespace ZeroBugBounce.LightMess
 
 			try
 			{
-				var command = message.Connection.CreateCommand();
-				command.CommandText = message.CommandText;
-
+				var command = message.Command;
 				command.BeginExecuteReader(EndExecuteReader, new SqlReaderState(command, taskCompletionSource));
 
 				return taskCompletionSource.Task;
@@ -66,12 +64,15 @@ namespace ZeroBugBounce.LightMess
 	{
 		public SqlReaderRequest(string commandText, SqlConnection connection)
 		{
-			CommandText = commandText;
-			Connection = connection;
+			Command = new SqlCommand(commandText, connection);
 		}
 
-		public string CommandText { get; private set; }
-		public SqlConnection Connection { get; private set; }
+		public SqlReaderRequest(SqlCommand command)
+		{
+			Command = command;
+		}
+
+		public SqlCommand Command { get; private set; }
 	}
 
 	public class SqlReaderResponse

@@ -88,6 +88,14 @@ namespace Testing
 			
 		}
 
+		[Fact]
+		public void ScanAndLoadHandlers()
+		{
+			var messenger = new Messenger();
+			messenger.ScanAndLoadHandlers(typeof(Messenger).Assembly);
+
+		}
+
 		class Account { }
 	}
 

@@ -32,11 +32,13 @@ namespace ZeroBugBounce.LightMess
 		{
 			if (Task.IsCanceled)
 			{
-				Task.ContinueWith(t => callback(Task, default(TResult))).Wait();
+				Task.ContinueWith(t => callback(t, default(TResult)),
+					TaskContinuationOptions.ExecuteSynchronously).Wait();
 			}
 			else
 			{
-				Task.ContinueWith(t => callback(Task, ((Envelope<TResult>)Task.Result).Contents)).Wait();
+				Task.ContinueWith(t => callback(t, ((Envelope<TResult>)t.Result).Contents), 
+					TaskContinuationOptions.ExecuteSynchronously).Wait();
 			}
 			return this;
 		}

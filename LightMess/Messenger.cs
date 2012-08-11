@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Reflection;
 
 namespace ZeroBugBounce.LightMess
 {
@@ -42,6 +43,31 @@ namespace ZeroBugBounce.LightMess
 			handlerLock.Enter();
 			handler.Message = this;
 			handlers.Add(typeof(T), handler);
+			handlerLock.Leave();
+		}
+
+		public void ScanAndLoadHandlers(Assembly assembly)
+		{
+			var handlerTypes = assembly.GetTypes()
+				.Where(t => t.IsClass && t.BaseType.IsGenericType && t.BaseType.IsClass &&
+							t.BaseType.GetGenericTypeDefinition() == typeof(Handler<>) && 
+							t.GetConstructors()
+							 .Where(c => c != null && c.GetParameters() != null && 
+								    c.GetParameters().Length == 0).Any());
+
+			var detectedHandlers = new List<Tuple<Type, Object>>();
+
+			foreach (var handlerType in handlerTypes)
+			{
+				detectedHandlers.Add(new Tuple<Type, Object>(handlerType.BaseType.GetGenericArguments()[0],
+													 Activator.CreateInstance(handlerType)));
+			}
+
+			handlerLock.Enter();
+			foreach (var newHandler in detectedHandlers)
+			{
+				handlers.Add(newHandler.Item1, newHandler.Item2);
+			}
 			handlerLock.Leave();
 		}
 

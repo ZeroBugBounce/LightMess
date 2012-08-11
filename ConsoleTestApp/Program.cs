@@ -12,6 +12,9 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
+			var messenger = new Messenger();
+			messenger.ScanAndLoadHandlers(typeof(Messenger).Assembly);
+
 			//throw new InvalidOperationException();
 			//ErrorHandling();
 			//SqlReaderHandlerTest();
