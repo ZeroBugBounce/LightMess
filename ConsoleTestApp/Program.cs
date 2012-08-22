@@ -45,7 +45,7 @@ namespace ConsoleTestApp
 
 			connection.Open();
 
-			var receipt = Message.Post(new SqlReaderRequest("SELECT * FROM [GenderByAge]", connection));
+			var receipt = Message.Post(new SqlReaderRequest(new SqlCommand("SELECT * FROM [GenderByAge]", connection)));
 
 			receipt.Callback<SqlReaderResponse>((t, r) =>
 			{
@@ -70,9 +70,9 @@ namespace ConsoleTestApp
 
 			connection.Open();
 
-			var receipt = Message.Post(new SqlNonQueryRequest(@"update GenderByAge 
+			var receipt = Message.Post(new SqlNonQueryRequest(new SqlCommand(@"update GenderByAge 
 set Name = Name
-FROM GenderByAge", connection));
+FROM GenderByAge", connection)));
 			receipt.Callback<SqlNonQueryResponse>((t, r) =>
 			{
 				Console.WriteLine("{0} records affected", r.AffectedRecords);

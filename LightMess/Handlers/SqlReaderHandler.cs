@@ -62,11 +62,6 @@ namespace ZeroBugBounce.LightMess
 
 	public class SqlReaderRequest
 	{
-		public SqlReaderRequest(string commandText, SqlConnection connection)
-		{
-			Command = new SqlCommand(commandText, connection);
-		}
-
 		public SqlReaderRequest(SqlCommand command)
 		{
 			Command = command;

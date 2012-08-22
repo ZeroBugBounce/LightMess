@@ -42,7 +42,9 @@ namespace Testing
 			Message.Post(new NameRequest())
 				   .Callback(t => {
 					   System.Diagnostics.Debug.WriteLine("On thread {0}", Thread.CurrentThread.Name);
-					   Thread.Sleep(100);  callbackWasCalled = true; })
+					   Thread.Sleep(100);  
+					   callbackWasCalled = true; 
+				   })
 				   .Wait(TimeSpan.MaxValue);
 
 			Assert.True(handlerWasCalled);

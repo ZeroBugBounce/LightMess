@@ -76,14 +76,12 @@ namespace ZeroBugBounce.LightMess
 
 	public class SqlNonQueryRequest
 	{
-		public SqlNonQueryRequest(SqlCommand command, SqlConnection connection)
+		public SqlNonQueryRequest(SqlCommand command)
 		{
 			Command = command;
-			Connection = connection;
 		}
 
 		public SqlCommand Command { get; private set; }
-		public SqlConnection Connection { get; private set; }
 	}
 
 	public class SqlNonQueryResponse
