@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
@@ -12,15 +13,16 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			var messenger = new Messenger();
-			messenger.ScanAndLoadHandlers(typeof(Messenger).Assembly);
-
+			SqlReaderComposableBaseTest();
+			//var messenger = new Messenger();
+			//messenger.ScanAndLoadHandlers(typeof(Messenger).Assembly);
+			//SqlReaderHandlerErrorTest();
 			//throw new InvalidOperationException();
 			//ErrorHandling();
 			//SqlReaderHandlerTest();
 			//SqlNonQueryHandlerTest();
 			//HttpRequestIOCompletionPortTests();
-			MessagingSpeedTest();
+			//MessagingSpeedTest();
 			//FileStreamIOCompletionPortsTest();
 		}
 
@@ -35,29 +37,83 @@ namespace ConsoleTestApp
 			messenger.Post(123);
 		}
 
+		static void SqlReaderComposableBaseTest()
+		{
+			Message.Init(new Messenger());
+			Message.AddHandler(new ProcessQueryHandler());
+			Message.AddHandler(new SqlReaderHandler());
+
+			Message.Post(new QueryRequest
+			{
+				ConnectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard-jr\SQLEXPRESS;
+				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true")
+			})
+					.Callback<QueryResponse>((t, r) =>
+					{
+						r.Names.ForEach(Console.WriteLine);
+					});
+		}
+
+		static void SqlReaderHandlerErrorTest()
+		{
+			Message.Init(new Messenger());
+			Message.AddHandler(new SqlReaderHandler());
+
+			var connectionBuilder = new SqlConnectionStringBuilder(@"Data Source=how123432ard-jr\SQLEXPRESS;
+				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true");
+
+			connectionBuilder.ConnectTimeout = 2;
+
+			var receipt = Message.Post(
+				new SqlReaderRequest(new SqlCommand("SELECT * FROM [GenderByAge]"), connectionBuilder));
+
+			receipt.Callback<SqlReaderResponse>((t, r) =>
+			{
+				try
+				{
+					var reader = r.DataReader;
+					while (reader.Read())
+					{
+						Console.WriteLine(reader.GetString(reader.GetOrdinal("Name")));
+					}
+				}
+				finally
+				{
+					r.Dispose();
+				}
+			});
+
+			receipt.Wait();
+		}
+
 		static void SqlReaderHandlerTest()
 		{
 			Message.Init(new Messenger());
 			Message.AddHandler(new SqlReaderHandler());
 
-			var connection = new SqlConnection(@"Data Source=howard-jr\SQLEXPRESS;
+			var connectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard-jr\SQLEXPRESS;
 				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true");
 
-			connection.Open();
-
-			var receipt = Message.Post(new SqlReaderRequest(new SqlCommand("SELECT * FROM [GenderByAge]", connection)));
+			var receipt = Message.Post(
+				new SqlReaderRequest(new SqlCommand("SELECT * FROM [GenderByAge]"), connectionBuilder));
 
 			receipt.Callback<SqlReaderResponse>((t, r) =>
 			{
-			    var reader = r.DataReader;
-			    while (reader.Read())
-			    {
-			        Console.WriteLine(reader.GetString(reader.GetOrdinal("Name")));
-			    }
+				try
+				{
+					var reader = r.DataReader;
+					while (reader.Read())
+					{
+						Console.WriteLine(reader.GetString(reader.GetOrdinal("Name")));
+					}
+				}
+				finally
+				{
+					r.Dispose();
+				}
 			});
 
 			receipt.Wait();
-			connection.Close();
 		}
 
 		static void SqlNonQueryHandlerTest()
@@ -208,6 +264,35 @@ FROM GenderByAge", connection)));
 
 			Console.WriteLine("{0} msg took {1} or {2} msg/s or {3}µs", iterations, timer.Elapsed,
 				((double)iterations) / timer.Elapsed.TotalSeconds, 1000 * (timer.Elapsed.TotalMilliseconds / ((double)iterations)));
+		}
+	}
+
+	public class QueryRequest : IConnectionMessage
+	{
+		public SqlConnectionStringBuilder ConnectionBuilder { get; internal set; }
+	}
+
+	public class QueryResponse
+	{
+		public List<string> Names { get; internal set; }
+	}
+
+	public class ProcessQueryHandler : SqlReaderComposableBase<QueryRequest, QueryResponse>
+	{
+		public override SqlCommand PrepareCommand(QueryRequest message)
+		{
+			return new SqlCommand("SELECT * FROM [GenderByAge]");
+		}
+
+		public override QueryResponse ProcessReader(SqlDataReader reader)
+		{
+			var names = new List<string>();
+			while (reader.Read())
+			{
+				names.Add(reader.GetString(0));
+			}
+
+			return new QueryResponse { Names = names };
 		}
 	}
 }

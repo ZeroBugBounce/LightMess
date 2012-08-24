@@ -18,6 +18,10 @@ namespace ZeroBugBounce.LightMess
 			try
 			{
 				var command = message.Command;
+				var connection = new SqlConnection(message.ConnectionBuilder.ConnectionString);
+				connection.Open();
+				command.Connection = connection;
+
 				command.BeginExecuteReader(EndExecuteReader, new SqlReaderState(command, taskCompletionSource));
 
 				return taskCompletionSource.Task;
@@ -27,7 +31,7 @@ namespace ZeroBugBounce.LightMess
 				taskCompletionSource.SetException(ex);
 			}
 
-			return null;
+			return taskCompletionSource.Task;
 		}
 
 		void EndExecuteReader(IAsyncResult asyncResult)
@@ -39,7 +43,7 @@ namespace ZeroBugBounce.LightMess
 				var sqlReader = sqlReaderState.Command.EndExecuteReader(asyncResult);
 
 				sqlReaderState.TaskCompletionSource.TrySetResult(
-					new Envelope<SqlReaderResponse>(new SqlReaderResponse(sqlReader)));
+					new Envelope<SqlReaderResponse>(new SqlReaderResponse(sqlReader, sqlReaderState.Command.Connection.Close)));
 			}
 			catch (Exception ex)
 			{
@@ -48,7 +52,7 @@ namespace ZeroBugBounce.LightMess
 		}
 
 		class SqlReaderState
-		{
+		{  
 			public SqlReaderState(SqlCommand command, TaskCompletionSource<Envelope> taskCompletionEventSource)
 			{
 				Command = command;
@@ -62,21 +66,31 @@ namespace ZeroBugBounce.LightMess
 
 	public class SqlReaderRequest
 	{
-		public SqlReaderRequest(SqlCommand command)
+		public SqlReaderRequest(SqlCommand command, SqlConnectionStringBuilder connectionBuilder)
 		{
 			Command = command;
+			ConnectionBuilder = connectionBuilder;
 		}
 
 		public SqlCommand Command { get; private set; }
+		public SqlConnectionStringBuilder ConnectionBuilder { get; private set; }
 	}
 
-	public class SqlReaderResponse
+	public class SqlReaderResponse : IDisposable
 	{
-		public SqlReaderResponse(SqlDataReader dataReader)
+		Action closeConnection;
+
+		public SqlReaderResponse(SqlDataReader dataReader, Action closeSqlConnection)
 		{
 			DataReader = dataReader;
+			closeConnection = closeSqlConnection;
 		}
 
 		public SqlDataReader DataReader { get; private set; }
+
+		public void Dispose()
+		{
+			closeConnection();
+		}
 	}
 }
