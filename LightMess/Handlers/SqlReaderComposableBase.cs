@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,11 +7,11 @@ namespace ZeroBugBounce.LightMess
 {
 	public abstract class SqlReaderComposableBase<TMessage, TOut> : Handler<TMessage> where TMessage : IConnectionMessage
 	{
-		public abstract SqlCommand PrepareCommand(TMessage message);
+		public abstract SqlCommand PrepareCommand(TMessage message, CancellationToken cancellationToken);
 
-		public abstract TOut ProcessReader(SqlDataReader reader);
+		public abstract TOut ProcessReader(TMessage message, SqlDataReader reader, CancellationToken cancellationToken);
 
-		public override Task<Envelope> Handle(TMessage message, CancellationToken cancellation)
+		public sealed override Task<Envelope> Handle(TMessage message, CancellationToken cancellationToken)
 		{
 			var taskCompletionSource = new TaskCompletionSource<Envelope>();
 
@@ -22,17 +19,22 @@ namespace ZeroBugBounce.LightMess
 			{
 				try
 				{
-					var command = PrepareCommand(message);
+					var command = PrepareCommand(message, cancellationToken);
 					Message.Post(new SqlReaderRequest(command, message.ConnectionBuilder))
 						   .Callback<SqlReaderResponse>((t, r) =>
 							{
 								try
 								{
-									taskCompletionSource.SetResult(new Envelope<TOut>(ProcessReader(r.DataReader)));
+									taskCompletionSource.SetResult(new Envelope<TOut>(
+										ProcessReader(message, r.DataReader, cancellationToken)));
 								}
 								catch (Exception ex)
 								{
 									taskCompletionSource.SetException(ex);
+								}
+								finally
+								{
+									r.Dispose(); 
 								}
 							});
 				}

@@ -13,7 +13,9 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			SqlReaderComposableBaseTest();
+			SqlNonQueryHandlerTest();
+			SqlNonQueryComposableBaseTest();
+			// SqlReaderComposableBaseTest();
 			//var messenger = new Messenger();
 			//messenger.ScanAndLoadHandlers(typeof(Messenger).Assembly);
 			//SqlReaderHandlerErrorTest();
@@ -37,6 +39,23 @@ namespace ConsoleTestApp
 			messenger.Post(123);
 		}
 
+		static void SqlNonQueryComposableBaseTest()
+		{
+			Message.Init(new Messenger());
+			Message.AddHandler(new SqlNonQueryHandler());
+			Message.AddHandler(new CountQueryHandler());
+
+			Message.Post(new NonQueryRequest
+			{
+				ConnectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard-jr\SQLEXPRESS;
+				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true")
+			})
+			.Callback<int>((t, r) =>
+			{
+				Console.WriteLine("{0} records affected", r);
+			});
+		}
+
 		static void SqlReaderComposableBaseTest()
 		{
 			Message.Init(new Messenger());
@@ -48,10 +67,10 @@ namespace ConsoleTestApp
 				ConnectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard-jr\SQLEXPRESS;
 				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true")
 			})
-					.Callback<QueryResponse>((t, r) =>
-					{
-						r.Names.ForEach(Console.WriteLine);
-					});
+			.Callback<QueryResponse>((t, r) =>
+			{
+				r.Names.ForEach(Console.WriteLine);
+			});
 		}
 
 		static void SqlReaderHandlerErrorTest()
@@ -121,22 +140,18 @@ namespace ConsoleTestApp
 			Message.Init(new Messenger());
 			Message.AddHandler(new SqlNonQueryHandler());
 
-			var connection = new SqlConnection(@"Data Source=howard-jr\SQLEXPRESS;
+			var connectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard-jr\SQLEXPRESS;
 				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true");
-
-			connection.Open();
 
 			var receipt = Message.Post(new SqlNonQueryRequest(new SqlCommand(@"update GenderByAge 
 set Name = Name
-FROM GenderByAge", connection)));
+FROM GenderByAge"), connectionBuilder));
 			receipt.Callback<SqlNonQueryResponse>((t, r) =>
 			{
 				Console.WriteLine("{0} records affected", r.AffectedRecords);
 			});
 
 			receipt.Wait();
-			connection.Close();
-
 			Thread.Sleep(1000);			
 		}
 
@@ -267,6 +282,21 @@ FROM GenderByAge", connection)));
 		}
 	}
 
+	public class CountQueryHandler : SqlNonQueryComposableBase<NonQueryRequest>
+	{
+		public override SqlCommand PrepareCommand(NonQueryRequest message, CancellationToken cancellationToken)
+		{
+			return new SqlCommand(@"update GenderByAge 
+set Name = Name
+FROM GenderByAge");
+		}
+	}
+
+	public class NonQueryRequest : IConnectionMessage
+	{
+		public SqlConnectionStringBuilder ConnectionBuilder { get; internal set; }
+	}
+
 	public class QueryRequest : IConnectionMessage
 	{
 		public SqlConnectionStringBuilder ConnectionBuilder { get; internal set; }
@@ -279,12 +309,12 @@ FROM GenderByAge", connection)));
 
 	public class ProcessQueryHandler : SqlReaderComposableBase<QueryRequest, QueryResponse>
 	{
-		public override SqlCommand PrepareCommand(QueryRequest message)
+		public override SqlCommand PrepareCommand(QueryRequest message, CancellationToken cancellationToken)
 		{
-			return new SqlCommand("SELECT * FROM [GenderByAge]");
+			return new SqlCommand("SET COUNT ON; SELECT * FROM [GenderByAge]; UPDATE [GenderByAge] WHERE 1 = 0");
 		}
 
-		public override QueryResponse ProcessReader(SqlDataReader reader)
+		public override QueryResponse ProcessReader(QueryRequest message, SqlDataReader reader, CancellationToken cancellationToken)
 		{
 			var names = new List<string>();
 			while (reader.Read())

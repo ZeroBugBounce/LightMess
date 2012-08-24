@@ -23,6 +23,11 @@ namespace ZeroBugBounce.LightMess
 					return taskCompletionSource.Task;
 				}
 
+				var command = message.Command;
+				var connection = new SqlConnection(message.ConnectionBuilder.ConnectionString);
+				connection.Open();
+				command.Connection = connection;
+
 				message.Command.BeginExecuteNonQuery(EndExecuteNonQuery, new SqlNonQueryState(message.Command, taskCompletionSource, cancellation));
 
 				return taskCompletionSource.Task;
@@ -50,7 +55,7 @@ namespace ZeroBugBounce.LightMess
 				int affectedRecords = sqlNonQueryState.Command.EndExecuteNonQuery(asyncResult);
 
 				sqlNonQueryState.TaskCompletionSource.TrySetResult(new Envelope<SqlNonQueryResponse>(
-					new SqlNonQueryResponse(affectedRecords)));
+					new SqlNonQueryResponse(affectedRecords, sqlNonQueryState.Command.Connection.Close)));
 			}
 			catch (Exception ex)
 			{
@@ -76,21 +81,31 @@ namespace ZeroBugBounce.LightMess
 
 	public class SqlNonQueryRequest
 	{
-		public SqlNonQueryRequest(SqlCommand command)
+		public SqlNonQueryRequest(SqlCommand command, SqlConnectionStringBuilder connectionBuilder)
 		{
 			Command = command;
+			ConnectionBuilder = connectionBuilder;
 		}
 
 		public SqlCommand Command { get; private set; }
+		public SqlConnectionStringBuilder ConnectionBuilder { get; private set; }
 	}
 
-	public class SqlNonQueryResponse
+	public class SqlNonQueryResponse : IDisposable
 	{
-		public SqlNonQueryResponse(int affectedRecords)
+		Action closeConnection;
+
+		public SqlNonQueryResponse(int affectedRecords, Action closeSqlConnection)
 		{
 			AffectedRecords = affectedRecords;
+			closeConnection = closeSqlConnection;
 		}
 
 		public int AffectedRecords { get; private set; }
+
+		public void Dispose()
+		{
+			closeConnection();
+		}
 	}
 }

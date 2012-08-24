@@ -41,6 +41,7 @@
     <Compile Include="Handler.cs" />
     <Compile Include="Handlers\HttpHandler.cs" />
     <Compile Include="Handlers\FileReadHandler.cs" />
+    <Compile Include="Handlers\SqlNonQueryComposableBase.cs" />
     <Compile Include="Handlers\SqlNonQueryHandler.cs" />
     <Compile Include="Handlers\SqlReaderComposableBase.cs" />
     <Compile Include="Handlers\SqlReaderHandler.cs" />
