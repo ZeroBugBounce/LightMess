@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="ErrorHandlingTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SingleThreadedHandlerTests.cs" />
     <Compile Include="Tests.cs" />
   </ItemGroup>
   <ItemGroup>

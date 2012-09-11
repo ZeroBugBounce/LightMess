@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using ZeroBugBounce.LightMess;
 
 namespace ConsoleTestApp
@@ -13,8 +16,10 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			SqlNonQueryHandlerTest();
-			SqlNonQueryComposableBaseTest();
+			STScheduler();
+
+			//SqlNonQueryHandlerTest();
+			//SqlNonQueryComposableBaseTest();
 			// SqlReaderComposableBaseTest();
 			//var messenger = new Messenger();
 			//messenger.ScanAndLoadHandlers(typeof(Messenger).Assembly);
@@ -26,6 +31,33 @@ namespace ConsoleTestApp
 			//HttpRequestIOCompletionPortTests();
 			//MessagingSpeedTest();
 			//FileStreamIOCompletionPortsTest();
+		}
+		
+		
+		static void STScheduler()
+		{
+			int count = 200;
+			Message.Init(new Messenger());
+			Message.AddHandler(new SingleThreadHandler());
+			ArrayList list = ArrayList.Synchronized(new ArrayList());
+						
+			while (count > 0)
+			{
+				ThreadPool.QueueUserWorkItem(state =>
+				{
+					list.Add(state);
+					Message.Post((int)state).Callback<int>((t, r) =>
+					{
+						list.Remove(r-1);
+						//Console.WriteLine("Answer is {0}", r);
+					});
+				}, count--);
+			}
+
+			Console.WriteLine("Finished added tasks");
+
+			Thread.Sleep(2000);
+			Console.WriteLine("{0} items remain: {1}", list.Count, string.Join(",", list.OfType<int>().Select(i => i.ToString()).ToArray()));
 		}
 
 		static void ErrorHandling()
@@ -213,7 +245,7 @@ FROM GenderByAge"), connectionBuilder));
 
 		static void MessagingSpeedTest()
 		{
-			int iterations = 100000;
+			int iterations = 200;
 			var messenger = new Messenger();
 			messenger.Handle<int, int>((i, c) => i + 1);
 
@@ -279,6 +311,19 @@ FROM GenderByAge"), connectionBuilder));
 
 			Console.WriteLine("{0} msg took {1} or {2} msg/s or {3}µs", iterations, timer.Elapsed,
 				((double)iterations) / timer.Elapsed.TotalSeconds, 1000 * (timer.Elapsed.TotalMilliseconds / ((double)iterations)));
+		}
+	}
+
+	class SingleThreadHandler : Handler<int, int>
+	{
+		SingleThreadTaskScheduler scheduler = new SingleThreadTaskScheduler();
+
+		public override Task<Envelope> Handle(int message, CancellationToken cancellationToken)
+		{
+			return Task<Envelope>.Factory.StartNew(() =>
+			{
+				return new Envelope<int>(message + 1);
+			}, default(CancellationToken), TaskCreationOptions.None, scheduler);
 		}
 	}
 

@@ -53,6 +53,7 @@
     <Compile Include="Messenger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Receipt.cs" />
+    <Compile Include="Schedulers\SingleThreadTaskScheduler.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Handlers\ReadMe.txt" />
