@@ -73,11 +73,12 @@ namespace ZeroBugBounce.LightMess
 		public void ScanAndLoadHandlers(Assembly assembly)
 		{
 			var handlerTypes = assembly.GetTypes()
-				.Where(t => t.IsClass && t.BaseType.IsGenericType && t.BaseType.IsClass &&
-							t.BaseType.GetGenericTypeDefinition() == typeof(Handler<>) && 
+				.Where(t => t.IsClass && t.BaseType.IsGenericType &&
+						(t.InheritsFrom(typeof(Handler<>)) ||
+						 t.InheritsFrom(typeof(Handler<,>))) &&
 							t.GetConstructors()
-							 .Where(c => c != null && c.GetParameters() != null && 
-								    c.GetParameters().Length == 0).Any());
+							 .Where(c => c != null && c.GetParameters() != null &&
+									c.GetParameters().Length == 0).Any()).ToArray();
 
 			var detectedHandlers = new List<Tuple<Type, Object>>();
 

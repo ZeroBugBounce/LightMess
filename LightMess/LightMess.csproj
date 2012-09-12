@@ -38,6 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Envelope.cs" />
+    <Compile Include="ExtensionMethods.cs" />
     <Compile Include="Handler.cs" />
     <Compile Include="Handlers\HttpHandler.cs" />
     <Compile Include="Handlers\FileReadHandler.cs" />

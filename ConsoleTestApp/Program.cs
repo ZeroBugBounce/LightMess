@@ -16,8 +16,9 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			STScheduler();
+			Scan();
 
+			//STScheduler();
 			//SqlNonQueryHandlerTest();
 			//SqlNonQueryComposableBaseTest();
 			// SqlReaderComposableBaseTest();
@@ -32,7 +33,13 @@ namespace ConsoleTestApp
 			//MessagingSpeedTest();
 			//FileStreamIOCompletionPortsTest();
 		}
-		
+
+		static void Scan()
+		{
+			var messenger = new Messenger();
+			messenger.ScanAndLoadHandlers(typeof(Program).Assembly);
+
+		}
 		
 		static void STScheduler()
 		{
@@ -323,7 +330,7 @@ FROM GenderByAge"), connectionBuilder));
 		}
 	}
 
-	class SingleThreadHandler : Handler<int, int>
+	public class SingleThreadHandler : Handler<int, int>
 	{
 		SingleThreadedTaskScheduler scheduler = new SingleThreadedTaskScheduler();
 
