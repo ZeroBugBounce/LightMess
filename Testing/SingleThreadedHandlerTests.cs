@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Xunit;
 using ZeroBugBounce.LightMess;
+using System;
 
 namespace Testing
 {
@@ -11,8 +12,24 @@ namespace Testing
 		public void Process_messages_on_single_threaded_handler()
 		{
 			int answer = 0;
+			int threadId = -1;
+
 			Message.Init(new Messenger());
-			Message.AddHandler(new SingleThreadHandler());
+
+			Message.Handle<int, int>((i, c) =>
+			{
+				if (threadId > -1 && threadId != Thread.CurrentThread.ManagedThreadId)
+				{
+					throw new InvalidOperationException();
+				}
+				else
+				{
+					threadId = Thread.CurrentThread.ManagedThreadId;
+				}
+
+				return i + 1;
+			}, HandleOption.SingleThread);
+
 			var wait = new ManualResetEventSlim(false);
 			Message.Post(1).Callback<int>((t, r) =>
 			{
@@ -25,19 +42,4 @@ namespace Testing
 			Assert.Equal(2, answer);
 		}
 	}
-
-	class SingleThreadHandler : Handler<int, int>
-	{
-		SingleThreadTaskScheduler scheduler = new SingleThreadTaskScheduler();
-
-		public override Task<Envelope> Handle(int message, CancellationToken cancellationToken)
-		{
-			return Task<Envelope>.Factory.StartNew(() =>
-			{
-				return new Envelope<int>(message + 1);
-			}, default(CancellationToken), TaskCreationOptions.None, scheduler);
-		}
-	}
-
-
 }

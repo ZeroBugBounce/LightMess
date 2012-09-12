@@ -46,6 +46,7 @@
     <Compile Include="Handlers\SqlReaderComposableBase.cs" />
     <Compile Include="Handlers\SqlReaderHandler.cs" />
     <Compile Include="Handlers\FileWriteHandler.cs" />
+    <Compile Include="LambdaHandler.cs" />
     <Compile Include="Locks\ILock.cs" />
     <Compile Include="Locks\MonitorWrapLock.cs" />
     <Compile Include="Locks\NoSpinHybridLock.cs" />
@@ -53,7 +54,8 @@
     <Compile Include="Messenger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Receipt.cs" />
-    <Compile Include="Schedulers\SingleThreadTaskScheduler.cs" />
+    <Compile Include="Schedulers\SingleThreadedTaskScheduler.cs" />
+    <Compile Include="SingleThreadedLambdaHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Handlers\ReadMe.txt" />

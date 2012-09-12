@@ -38,6 +38,30 @@ namespace ZeroBugBounce.LightMess
 			handlers.Add(typeof(T), new LambdaHandler<T, TResult>(function));
 		}
 
+		public void Handle<T>(Action<T, CancellationToken> action, HandleOption options)
+		{
+			if (options.HasFlag(HandleOption.SingleThread))
+			{
+				handlers.Add(typeof(T), new SingleThreadedLambdaHandler<T>(action));
+			}
+			else
+			{
+				handlers.Add(typeof(T), new LambdaHandler<T>(action));
+			}
+		}
+
+		public void Handle<T, TResult>(Func<T, CancellationToken, TResult> function, HandleOption options)
+		{
+			if (options.HasFlag(HandleOption.SingleThread))
+			{
+				handlers.Add(typeof(T), new SingleThreadedLambdaHandler<T, TResult>(function));
+			}
+			else
+			{
+				handlers.Add(typeof(T), new LambdaHandler<T, TResult>(function));
+			}
+		}
+
 		public void AddHandler<T>(Handler<T> handler)
 		{
 			handlerLock.Enter();
@@ -100,9 +124,26 @@ namespace ZeroBugBounce.LightMess
 			messenger.Handle<T, TResult>(function);
 		}
 
+		public static void Handle<T>(Action<T, CancellationToken> action, HandleOption options)
+		{
+			messenger.Handle<T>(action, options);
+		}
+
+		public static void Handle<T, TResult>(Func<T, CancellationToken, TResult> function, HandleOption options)
+		{
+			messenger.Handle<T, TResult>(function, options);
+		}
+
 		public static void AddHandler<T>(Handler<T> handler)
 		{
 			messenger.AddHandler(handler);
 		}
+	}
+
+	[Flags]
+	public enum HandleOption : int 
+	{
+		None = 0,
+		SingleThread = 1
 	}
 }

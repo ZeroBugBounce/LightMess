@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -7,14 +8,13 @@ using System.Threading.Tasks;
 
 namespace ZeroBugBounce.LightMess
 {
-	public class SingleThreadTaskScheduler : TaskScheduler
+	public class SingleThreadedTaskScheduler : TaskScheduler
 	{
 		Thread thread;
-		long run = 1;
 		readonly object synclock = new object();
 		Queue<Task> taskQueue = new Queue<Task>();
 
-		public SingleThreadTaskScheduler()
+		public SingleThreadedTaskScheduler()
 		{
 			thread = new Thread(RunScheduler);
 			thread.IsBackground = true;
@@ -23,34 +23,44 @@ namespace ZeroBugBounce.LightMess
 
 		void RunScheduler()
 		{
+			Monitor.Enter(synclock);
 			while (true)
 			{
-				Monitor.Enter(synclock);
 				Monitor.Wait(synclock);
-				var localQueue = new List<Task>();
-				while (taskQueue.Count > 0)
-				{
-					localQueue.Add(taskQueue.Dequeue());
-				}
+			dequeueAndProcess:
+				var task = taskQueue.Dequeue();
+
 				Monitor.Exit(synclock);
 
-				localQueue.ForEach(t => TryExecuteTask(t));
-
-				if (Interlocked.Read(ref run) == 0L)
+				if (!TryExecuteTask(task))
 				{
-					break;
+					throw new InvalidOperationException("Something prevented the task from executing");
+				}
+
+				Monitor.Enter(synclock);
+
+				if (taskQueue.Count > 0)
+				{
+					goto dequeueAndProcess;
 				}
 			}
+			// Monitor.Exit(synclock);
 		}
 
 		protected override IEnumerable<Task> GetScheduledTasks()
 		{
-			throw new NotImplementedException();
+			Monitor.Enter(synclock);
+			var tasks = taskQueue.ToArray();
+			Monitor.Pulse(synclock);
+			Monitor.Exit(synclock);
+
+			return tasks;
 		}
 
 		protected override void QueueTask(Task task)
 		{
 			Monitor.Enter(synclock);
+			Debug.WriteLine("QueueTask {0}", task.GetHashCode());
 			taskQueue.Enqueue(task);
 			Monitor.Pulse(synclock);
 			Monitor.Exit(synclock);
@@ -58,8 +68,7 @@ namespace ZeroBugBounce.LightMess
 
 		protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
 		{
-			task.RunSynchronously();
-			return true;
+			throw new NotImplementedException();
 		}
 	}
 }

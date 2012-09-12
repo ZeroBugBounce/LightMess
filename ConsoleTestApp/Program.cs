@@ -36,10 +36,11 @@ namespace ConsoleTestApp
 		
 		static void STScheduler()
 		{
-			int count = 200;
+			int count = 2500;
 			Message.Init(new Messenger());
 			Message.AddHandler(new SingleThreadHandler());
 			ArrayList list = ArrayList.Synchronized(new ArrayList());
+			Random rng = new Random();
 						
 			while (count > 0)
 			{
@@ -48,16 +49,24 @@ namespace ConsoleTestApp
 					list.Add(state);
 					Message.Post((int)state).Callback<int>((t, r) =>
 					{
+						Thread.Sleep(0);
 						list.Remove(r-1);
 						//Console.WriteLine("Answer is {0}", r);
 					});
 				}, count--);
 			}
 
-			Console.WriteLine("Finished added tasks");
+			Console.WriteLine("Finished adding tasks");
 
-			Thread.Sleep(2000);
-			Console.WriteLine("{0} items remain: {1}", list.Count, string.Join(",", list.OfType<int>().Select(i => i.ToString()).ToArray()));
+			Thread.Sleep(10);
+
+			char exitChar = '1';
+
+			while (exitChar != 'x')
+			{
+				Console.WriteLine("{0} items remain: {1}", list.Count, string.Join(",", list.OfType<int>().Select(i => i.ToString()).ToArray()));
+				exitChar = Console.ReadKey(true).KeyChar;
+			}
 		}
 
 		static void ErrorHandling()
@@ -316,7 +325,7 @@ FROM GenderByAge"), connectionBuilder));
 
 	class SingleThreadHandler : Handler<int, int>
 	{
-		SingleThreadTaskScheduler scheduler = new SingleThreadTaskScheduler();
+		SingleThreadedTaskScheduler scheduler = new SingleThreadedTaskScheduler();
 
 		public override Task<Envelope> Handle(int message, CancellationToken cancellationToken)
 		{
