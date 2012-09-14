@@ -57,6 +57,19 @@ namespace ZeroBugBounce.LightMess
 			return tasks;
 		}
 
+		public override int MaximumConcurrencyLevel
+		{
+			get
+			{
+				return 1;
+			}
+		}
+
+		protected override bool TryDequeue(Task task)
+		{
+			return false;
+		}
+
 		protected override void QueueTask(Task task)
 		{
 			Monitor.Enter(synclock);

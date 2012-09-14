@@ -16,7 +16,7 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			Scan();
+			//Scan();
 
 			//STScheduler();
 			//SqlNonQueryHandlerTest();
@@ -30,7 +30,7 @@ namespace ConsoleTestApp
 			//SqlReaderHandlerTest();
 			//SqlNonQueryHandlerTest();
 			//HttpRequestIOCompletionPortTests();
-			//MessagingSpeedTest();
+			MessagingSpeedTest();
 			//FileStreamIOCompletionPortsTest();
 		}
 
@@ -261,7 +261,7 @@ FROM GenderByAge"), connectionBuilder));
 
 		static void MessagingSpeedTest()
 		{
-			int iterations = 200;
+			int iterations = 2000000;
 			var messenger = new Messenger();
 			messenger.Handle<int, int>((i, c) => i + 1);
 
