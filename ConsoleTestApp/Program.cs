@@ -18,8 +18,8 @@ namespace ConsoleTestApp
 		{
 			//Scan();
 
-			//STScheduler();
-			//SqlNonQueryHandlerTest();
+			//STSchedulerMultipleHandler();
+			SqlNonQueryHandlerTest();
 			//SqlNonQueryComposableBaseTest();
 			// SqlReaderComposableBaseTest();
 			//var messenger = new Messenger();
@@ -30,8 +30,13 @@ namespace ConsoleTestApp
 			//SqlReaderHandlerTest();
 			//SqlNonQueryHandlerTest();
 			//HttpRequestIOCompletionPortTests();
-			MessagingSpeedTest();
+			//MessagingSpeedTest();
 			//FileStreamIOCompletionPortsTest();
+		}
+
+		static void TaskAll()
+		{
+			
 		}
 
 		static void Scan()
@@ -39,6 +44,12 @@ namespace ConsoleTestApp
 			var messenger = new Messenger();
 			messenger.ScanAndLoadHandlers(typeof(Program).Assembly);
 
+		}
+
+		static void STSchedulerMultipleHandler()
+		{
+			Message.Init(new Messenger());
+			
 		}
 		
 		static void STScheduler()
@@ -188,7 +199,7 @@ namespace ConsoleTestApp
 			Message.Init(new Messenger());
 			Message.AddHandler(new SqlNonQueryHandler());
 
-			var connectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard-jr\SQLEXPRESS;
+			var connectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard\SQLEXPRESS;
 				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true");
 
 			var receipt = Message.Post(new SqlNonQueryRequest(new SqlCommand(@"update GenderByAge 

@@ -10,8 +10,11 @@ namespace ZeroBugBounce.LightMess
 		Action<T, CancellationToken> handler;
 
 		public SingleThreadedLambdaHandler(Action<T, CancellationToken> handlerAction)
+			: this(new SingleThreadedTaskScheduler(), handlerAction) { }
+
+		public SingleThreadedLambdaHandler(SingleThreadedTaskScheduler scheduler, Action<T, CancellationToken> handlerAction)
 		{
-			taskScheduler = new SingleThreadedTaskScheduler();
+			taskScheduler = scheduler;
 			handler = handlerAction;
 		}
 
@@ -31,8 +34,11 @@ namespace ZeroBugBounce.LightMess
 		Func<T, CancellationToken, TReply> handler;
 
 		public SingleThreadedLambdaHandler(Func<T, CancellationToken, TReply> handlerFunction)
+			: this(new SingleThreadedTaskScheduler(), handlerFunction) { }
+
+		public SingleThreadedLambdaHandler(SingleThreadedTaskScheduler scheduler, Func<T, CancellationToken, TReply> handlerFunction)
 		{
-			taskScheduler = new SingleThreadedTaskScheduler();
+			taskScheduler = scheduler;
 			handler = handlerFunction;
 		}
 
@@ -44,5 +50,4 @@ namespace ZeroBugBounce.LightMess
 			}, cancellationToken, TaskCreationOptions.None, taskScheduler);
 		}
 	}
-
 }

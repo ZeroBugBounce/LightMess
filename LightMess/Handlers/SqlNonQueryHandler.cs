@@ -37,7 +37,7 @@ namespace ZeroBugBounce.LightMess
 				taskCompletionSource.SetException(ex);
 			}
 
-			return null;
+			return taskCompletionSource.Task;
 		}
 
 		void EndExecuteNonQuery(IAsyncResult asyncResult)
