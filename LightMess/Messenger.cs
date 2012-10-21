@@ -15,7 +15,7 @@ namespace ZeroBugBounce.LightMess
 	{
 		ILock handlerLock = new SpinningHybridLock(spinCount: 1200);
 		public Receipt Post<T>(T message)
-		{
+		{ 
 			Handler<T> handler;				
 			handlerLock.Enter();
 			handler = handlers[typeof(T)] as Handler<T>;

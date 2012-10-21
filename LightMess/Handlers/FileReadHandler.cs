@@ -19,7 +19,6 @@ namespace ZeroBugBounce.LightMess
 				cancellation.Register((tcs) =>
 				{
 					((TaskCompletionSource<Envelope>)tcs).TrySetCanceled();
-					Console.WriteLine("((TaskCompletionSource<Envelope>)tcs).TrySetCanceled();");
 				}, taskCompletionSource);
 
 				inStream.BeginRead(buffer, 0, 4096, EndRead, new ReadState(message.Path, inStream, buffer, outStream, taskCompletionSource));
@@ -46,6 +45,7 @@ namespace ZeroBugBounce.LightMess
 				int bytesRead = readState.InStream.EndRead(asyncResult);
 				if (task.IsCanceled) { readState.InStream.Dispose(); return; }
 
+
 				if (bytesRead > 0)
 				{
 					if (task.IsCanceled) { readState.InStream.Dispose(); return; }
@@ -59,8 +59,6 @@ namespace ZeroBugBounce.LightMess
 					if (task.IsCanceled) { readState.InStream.Dispose(); return; }
 					readState.TaskCompletionSource.SetResult(new Envelope<FileReadResponse>(
 						new FileReadResponse(readState.Path, readState.OutStream.ToArray())));
-
-					Console.WriteLine("readState.TaskCompletionSource.SetResult");
 				}
 			}
 			catch (Exception ex)

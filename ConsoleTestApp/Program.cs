@@ -16,10 +16,12 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
+			StreamReadLargeFile();
+
 			//Scan();
 
 			//STSchedulerMultipleHandler();
-			SqlNonQueryHandlerTest();
+			//SqlNonQueryHandlerTest();
 			//SqlNonQueryComposableBaseTest();
 			// SqlReaderComposableBaseTest();
 			//var messenger = new Messenger();
@@ -37,6 +39,39 @@ namespace ConsoleTestApp
 		static void TaskAll()
 		{
 			
+		}
+
+		static void StreamReadLargeFile()
+		{
+			var largeFilePath = @"X:\Downloads\6.0.6001.18000.367-KRMSDK_EN.iso"; // > 1 GB
+			var messenger = new Messenger();
+			messenger.AddHandler(new StreamingFileReadHandler());
+
+			var receipt = messenger.Post(new StreamingFileReadRequest(largeFilePath, 10 * 1024 * 1024, (l, b) =>
+			{
+				Console.WriteLine("Buffer starts at {0:0,000}", l);
+			}));
+
+			receipt.Callback<StreamingFileReadResponse>((t, r) =>
+			{
+				Console.WriteLine("Total bytes read: {0}", r.BytesRead);
+				Console.WriteLine("Current working set: {0}", Process.GetCurrentProcess().WorkingSet64);
+			});
+		}
+
+		static void ReadLargeFile()
+		{
+			var largeFilePath = @"X:\Downloads\FT54.wmv"; // > 1 GB
+			var messenger = new Messenger();
+			messenger.AddHandler(new FileReadHandler());
+
+			var receipt = messenger.Post(new FileReadRequest(largeFilePath));
+
+			receipt.Callback<FileReadResponse>((t, r) =>
+			{
+				Console.WriteLine("File size: {0}", r.Contents.Length);
+				Console.WriteLine("Current working set: {0}", Process.GetCurrentProcess().WorkingSet64);
+			});
 		}
 
 		static void Scan()
@@ -202,6 +237,9 @@ namespace ConsoleTestApp
 			var connectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard\SQLEXPRESS;
 				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true");
 
+			var timer = new Stopwatch();
+			timer.Start();
+
 			var receipt = Message.Post(new SqlNonQueryRequest(new SqlCommand(@"update GenderByAge 
 set Name = Name
 FROM GenderByAge"), connectionBuilder));
@@ -211,6 +249,10 @@ FROM GenderByAge"), connectionBuilder));
 			});
 
 			receipt.Wait();
+			timer.Stop();
+
+			Console.WriteLine("SqlNonQueryHandlerTest took {0:0.00}ms", timer.ElapsedMilliseconds);
+
 			Thread.Sleep(1000);			
 		}
 

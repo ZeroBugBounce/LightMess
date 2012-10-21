@@ -47,6 +47,7 @@
     <Compile Include="Handlers\SqlReaderComposableBase.cs" />
     <Compile Include="Handlers\SqlReaderHandler.cs" />
     <Compile Include="Handlers\FileWriteHandler.cs" />
+    <Compile Include="Handlers\StreamingFileReadHandler.cs" />
     <Compile Include="LambdaHandler.cs" />
     <Compile Include="Locks\ILock.cs" />
     <Compile Include="Locks\MonitorWrapLock.cs" />
