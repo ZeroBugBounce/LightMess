@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 namespace ZeroBugBounce.LightMess
 {
 	/// <summary>
-	/// Writes a file using IO completion ports
+	/// Writes a file asynchronously
 	/// </summary>
 	public class FileWriteHandler : Handler<FileWriteRequest>
 	{
@@ -27,7 +27,7 @@ namespace ZeroBugBounce.LightMess
 				taskCompletionSource.SetException(ex);
 			}
 
-			return null;
+			return taskCompletionSource.Task;
 		}
 
 		void EndWrite(IAsyncResult asyncResult)

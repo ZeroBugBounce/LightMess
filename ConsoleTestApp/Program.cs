@@ -49,13 +49,17 @@ namespace ConsoleTestApp
 
 			var receipt = messenger.Post(new StreamingFileReadRequest(largeFilePath, 10 * 1024 * 1024, (l, b) =>
 			{
-				Console.WriteLine("Buffer starts at {0:0,000}", l);
+				if (l % 1000000 == 0)
+				{
+					Console.WriteLine("Buffer starts at {0:0,000}", l);
+					Console.WriteLine("Current working set: {0:0,000}", Process.GetCurrentProcess().WorkingSet64);
+				}
 			}));
 
 			receipt.Callback<StreamingFileReadResponse>((t, r) =>
 			{
-				Console.WriteLine("Total bytes read: {0}", r.BytesRead);
-				Console.WriteLine("Current working set: {0}", Process.GetCurrentProcess().WorkingSet64);
+				Console.WriteLine("Total bytes read: {0:0,000}", r.BytesRead);
+				Console.WriteLine("Current working set: {0:0,000}", Process.GetCurrentProcess().WorkingSet64);
 			});
 		}
 

@@ -8,6 +8,10 @@ using System.IO;
 
 namespace ZeroBugBounce.LightMess
 {
+	/// <summary>
+	/// Streams a file asynchronously for processing a chunk at a time,
+	/// rather than loading the whole file into memory.
+	/// </summary>
 	public class StreamingFileReadHandler : Handler<StreamingFileReadRequest>
 	{
 		public override Task<Envelope> Handle(StreamingFileReadRequest message, CancellationToken cancellation)

@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 
 namespace ZeroBugBounce.LightMess
 {
+	/// <summary>
+	/// Reads a file asynchronously into memory and returns the entire file.
+	/// </summary>
 	public class FileReadHandler : Handler<FileReadRequest>
 	{
 		public override Task<Envelope> Handle(FileReadRequest message, CancellationToken cancellation)
@@ -30,7 +33,7 @@ namespace ZeroBugBounce.LightMess
 				taskCompletionSource.SetException(ex);
 			}
 
-			return null;
+			return taskCompletionSource.Task;
 		}
 
 		void EndRead(IAsyncResult asyncResult)
@@ -44,7 +47,6 @@ namespace ZeroBugBounce.LightMess
 
 				int bytesRead = readState.InStream.EndRead(asyncResult);
 				if (task.IsCanceled) { readState.InStream.Dispose(); return; }
-
 
 				if (bytesRead > 0)
 				{
