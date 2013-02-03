@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace ZeroBugBounce.LightMess
 {
-	public abstract class SqlNonQueryComposableBase<TMessage> : Handler<TMessage> where TMessage : IConnectionMessage
+	public abstract class SqlNonQueryComposableBase<TMessage> : Handler<TMessage> where TMessage : ISqlConnectionMessage
 	{
 		public abstract SqlCommand PrepareCommand(TMessage message, CancellationToken cancellationToken);
 

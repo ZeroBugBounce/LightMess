@@ -84,8 +84,9 @@ namespace ZeroBugBounce.LightMess
 
 			foreach (var handlerType in handlerTypes)
 			{
-				detectedHandlers.Add(new Tuple<Type, Object>(handlerType.BaseType.GetGenericArguments()[0],
-													 Activator.CreateInstance(handlerType)));
+				Handler handler = Activator.CreateInstance(handlerType) as Handler;
+				handler.Message = this;
+				detectedHandlers.Add(new Tuple<Type, Object>(handlerType.BaseType.GetGenericArguments()[0], handler));
 			}
 
 			handlerLock.Enter();

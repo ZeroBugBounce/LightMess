@@ -16,7 +16,7 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			StreamReadLargeFile();
+			//StreamReadLargeFile();
 
 			//Scan();
 
@@ -32,7 +32,7 @@ namespace ConsoleTestApp
 			//SqlReaderHandlerTest();
 			//SqlNonQueryHandlerTest();
 			//HttpRequestIOCompletionPortTests();
-			//MessagingSpeedTest();
+			MessagingSpeedTest();
 			//FileStreamIOCompletionPortsTest();
 		}
 
@@ -318,7 +318,7 @@ FROM GenderByAge"), connectionBuilder));
 
 		static void MessagingSpeedTest()
 		{
-			int iterations = 2000000;
+			int iterations = 200000;
 			var messenger = new Messenger();
 			messenger.Handle<int, int>((i, c) => i + 1);
 
@@ -410,12 +410,12 @@ FROM GenderByAge");
 		}
 	}
 
-	public class NonQueryRequest : IConnectionMessage
+	public class NonQueryRequest : ISqlConnectionMessage
 	{
 		public SqlConnectionStringBuilder ConnectionBuilder { get; internal set; }
 	}
 
-	public class QueryRequest : IConnectionMessage
+	public class QueryRequest : ISqlConnectionMessage
 	{
 		public SqlConnectionStringBuilder ConnectionBuilder { get; internal set; }
 	}

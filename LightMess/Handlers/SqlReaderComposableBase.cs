@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace ZeroBugBounce.LightMess
 {
-	public abstract class SqlReaderComposableBase<TMessage, TOut> : Handler<TMessage> where TMessage : IConnectionMessage
+	public abstract class SqlReaderComposableBase<TMessage, TOut> : Handler<TMessage> where TMessage : ISqlConnectionMessage
 	{
 		public abstract SqlCommand PrepareCommand(TMessage message, CancellationToken cancellationToken);
 
@@ -48,7 +48,7 @@ namespace ZeroBugBounce.LightMess
 		}
 	}
 
-	public interface IConnectionMessage
+	public interface ISqlConnectionMessage
 	{
 		SqlConnectionStringBuilder ConnectionBuilder { get; }
 	}

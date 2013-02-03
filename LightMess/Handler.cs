@@ -4,9 +4,13 @@ using System.Threading.Tasks;
 
 namespace ZeroBugBounce.LightMess
 {
-	public abstract class Handler<T>
+	public class Handler
 	{
 		public Messenger Message { get; internal set; }
+	}
+
+	public abstract class Handler<T> : Handler
+	{		
 		public abstract Task<Envelope> Handle(T message, CancellationToken cancellationToken);
 	}
 
