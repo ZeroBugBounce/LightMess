@@ -7,44 +7,27 @@ namespace ZeroBugBounce.LightMess
 {
 	public abstract class SqlReaderComposableBase<TMessage, TOut> : Handler<TMessage> where TMessage : ISqlConnectionMessage
 	{
-		public abstract SqlCommand PrepareCommand(TMessage message, CancellationToken cancellationToken);
+		public abstract SqlCommand PrepareCommand(TMessage message, Receipt receipt);
 
-		public abstract TOut ProcessReader(TMessage message, SqlDataReader reader, CancellationToken cancellationToken);
+		public abstract TOut ProcessReader(TMessage message, SqlDataReader reader, Receipt receipt);
 
-		public sealed override Task<Envelope> Handle(TMessage message, CancellationToken cancellationToken)
+		public sealed override void Handle(TMessage message, Receipt receipt)
 		{
 			var taskCompletionSource = new TaskCompletionSource<Envelope>();
 
-			Task.Factory.StartNew(() =>
-			{
-				try
-				{
-					var command = PrepareCommand(message, cancellationToken);
-					Message.Post(new SqlReaderRequest(command, message.ConnectionBuilder))
-						   .Callback<SqlReaderResponse>((t, r) =>
-							{
-								try
-								{
-									taskCompletionSource.SetResult(new Envelope<TOut>(
-										ProcessReader(message, r.DataReader, cancellationToken)));
-								}
-								catch (Exception ex)
-								{
-									taskCompletionSource.SetException(ex);
-								}
-								finally
-								{
-									r.Dispose(); 
-								}
-							});
-				}
-				catch (Exception ex)
-				{
-					taskCompletionSource.SetException(ex);
-				}
-			});
-
-			return taskCompletionSource.Task;
+			var command = PrepareCommand(message, receipt);
+			Message.Post(new SqlReaderRequest(command, message.ConnectionBuilder))
+					.Callback<SqlReaderResponse>(r =>
+					{
+						try
+						{
+							receipt.FireCallback(ProcessReader(message, r.DataReader, receipt));
+						}
+						finally
+						{
+							r.Dispose(); 
+						}
+					});
 		}
 	}
 

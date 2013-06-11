@@ -11,71 +11,32 @@ namespace ZeroBugBounce.LightMess
 {
 	public class SqlNonQueryHandler : Handler<SqlNonQueryRequest>
 	{
-		public override Task<Envelope> Handle(SqlNonQueryRequest message, CancellationToken cancellation)
+		public override void Handle(SqlNonQueryRequest message, Receipt receipt)
 		{
-			var taskCompletionSource = new TaskCompletionSource<Envelope>();
+			var command = message.Command;
+			var connection = new SqlConnection(message.ConnectionBuilder.ConnectionString);
+			connection.Open();
+			command.Connection = connection;
 
-			try
-			{
-				if (cancellation.IsCancellationRequested)
-				{
-					taskCompletionSource.TrySetCanceled();
-					return taskCompletionSource.Task;
-				}
-
-				var command = message.Command;
-				var connection = new SqlConnection(message.ConnectionBuilder.ConnectionString);
-				connection.Open();
-				command.Connection = connection;
-
-				message.Command.BeginExecuteNonQuery(EndExecuteNonQuery, new SqlNonQueryState(message.Command, taskCompletionSource, cancellation));
-
-				return taskCompletionSource.Task;
-			}
-			catch (Exception ex)
-			{
-				taskCompletionSource.SetException(ex);
-			}
-
-			return taskCompletionSource.Task;
+			message.Command.BeginExecuteNonQuery(EndExecuteNonQuery, new SqlNonQueryState(message.Command, receipt));
 		}
 
 		void EndExecuteNonQuery(IAsyncResult asyncResult)
 		{
 			var sqlNonQueryState = asyncResult.AsyncState as SqlNonQueryState;
-			try
-			{
-				if (sqlNonQueryState.CancellationToken.IsCancellationRequested)
-				{
-					sqlNonQueryState.TaskCompletionSource.TrySetCanceled();
-					sqlNonQueryState.Command.Cancel();
-					return;
-				}
-
-				int affectedRecords = sqlNonQueryState.Command.EndExecuteNonQuery(asyncResult);
-
-				sqlNonQueryState.TaskCompletionSource.TrySetResult(new Envelope<SqlNonQueryResponse>(
-					new SqlNonQueryResponse(affectedRecords, sqlNonQueryState.Command.Connection.Close)));
-			}
-			catch (Exception ex)
-			{
-				sqlNonQueryState.TaskCompletionSource.TrySetException(ex);
-			}
+			int affectedRecords = sqlNonQueryState.Command.EndExecuteNonQuery(asyncResult);
 		}
 
 		class SqlNonQueryState
 		{
-			public SqlNonQueryState(SqlCommand command, TaskCompletionSource<Envelope> taskCompletionEventSource,
-				CancellationToken cancellationToken)
+			public SqlNonQueryState(SqlCommand command, Receipt receipt)
 			{
 				Command = command;
-				TaskCompletionSource = taskCompletionEventSource;
-				CancellationToken = cancellationToken;
+				Receipt = receipt;
 			}
 
 			public SqlCommand Command { get; private set; }
-			public TaskCompletionSource<Envelope> TaskCompletionSource { get; set; }
-			public CancellationToken CancellationToken { get; private set; }
+			public Receipt Receipt { get; private set; }
 		}
 	}
 

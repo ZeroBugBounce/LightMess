@@ -9,59 +9,37 @@ namespace ZeroBugBounce.LightMess
 	/// </summary>
 	public class FileWriteHandler : Handler<FileWriteRequest>
 	{
-		public override Task<Envelope> Handle(FileWriteRequest message, System.Threading.CancellationToken cancellation)
+		public override void Handle(FileWriteRequest message, Receipt receipt)
 		{
-			var taskCompletionSource = new TaskCompletionSource<Envelope>();
-
-			try
-			{
 				var outStream = new FileStream(message.Path, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
 
 				outStream.BeginWrite(message.Contents, 0, message.Contents.Length, EndWrite,
-					new WriteState(message.Path, outStream, message.Contents, taskCompletionSource));
-
-				return taskCompletionSource.Task;
-			}
-			catch (Exception ex)
-			{
-				taskCompletionSource.SetException(ex);
-			}
-
-			return taskCompletionSource.Task;
+					new WriteState(message.Path, outStream, message.Contents, receipt));
 		}
 
 		void EndWrite(IAsyncResult asyncResult)
 		{
 			var writeState = asyncResult.AsyncState as WriteState;
 
-			try
-			{
 				writeState.OutStream.EndWrite(asyncResult);
 				writeState.OutStream.Dispose();
-				writeState.TaskCompletionSource.TrySetResult(
-					new Envelope<FileWriteResponse>(new FileWriteResponse(writeState.Path)));
-			}
-			catch (Exception ex)
-			{
-				writeState.TaskCompletionSource.SetException(ex);
-			}
+				writeState.Receipt.FireCallback(new FileWriteResponse(writeState.Path));
 		}
 
 		class WriteState
 		{
-			public WriteState(string path, FileStream outStream, byte[] buffer, 
-				TaskCompletionSource<Envelope> taskCompletionSource)
+			public WriteState(string path, FileStream outStream, byte[] buffer, Receipt receipt)
 			{
 				Path = path;
 				OutStream = outStream;
 				Buffer = buffer;
-				TaskCompletionSource = taskCompletionSource;
+				Receipt  = receipt;
 			}
 
 			public string Path { get; private set; }
 			public FileStream OutStream { get; private set; }
 			public byte[] Buffer { get; private set; }
-			public TaskCompletionSource<Envelope> TaskCompletionSource { get; private set; }
+			public Receipt Receipt { get; private set; }
 		}
 	}
 

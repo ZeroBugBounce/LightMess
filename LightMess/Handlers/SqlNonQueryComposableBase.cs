@@ -7,36 +7,22 @@ namespace ZeroBugBounce.LightMess
 {
 	public abstract class SqlNonQueryComposableBase<TMessage> : Handler<TMessage> where TMessage : ISqlConnectionMessage
 	{
-		public abstract SqlCommand PrepareCommand(TMessage message, CancellationToken cancellationToken);
+		public abstract SqlCommand PrepareCommand(TMessage message, Receipt receipt);
 
-		public sealed override Task<Envelope> Handle(TMessage message, CancellationToken cancellationToken)
+		public sealed override void Handle(TMessage message, Receipt receipt)
 		{
-			var taskComletionSource = new TaskCompletionSource<Envelope>();
-
-			Task.Factory.StartNew(() =>
-			{
-				try
+			Message.Post(new SqlNonQueryRequest(PrepareCommand(message, receipt), message.ConnectionBuilder))
+				.Callback<SqlNonQueryResponse>(r =>
 				{
-					Message.Post(new SqlNonQueryRequest(PrepareCommand(message, cancellationToken), message.ConnectionBuilder))
-						.Callback<SqlNonQueryResponse>((t, r) =>
-						{
-							try
-							{
-								taskComletionSource.SetResult(new Envelope<int>(r.AffectedRecords));
-							}
-							finally
-							{
-								r.Dispose();
-							}
-						});
-				}
-				catch (Exception ex)
-				{
-					taskComletionSource.SetException(ex);
-				}
-			});
-
-			return taskComletionSource.Task;
+					try
+					{
+						receipt.FireCallback(r.AffectedRecords);
+					}
+					finally
+					{
+						r.Dispose();
+					}
+				});
 		}
 	}
 }

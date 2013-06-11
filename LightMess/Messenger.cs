@@ -16,49 +16,45 @@ namespace ZeroBugBounce.LightMess
 		ILock handlerLock = new SpinningHybridLock(spinCount: 1200);
 		public Receipt Post<T>(T message)
 		{ 
-			Handler<T> handler;				
-			handlerLock.Enter();
-			handler = handlers[typeof(T)] as Handler<T>;
-			handlerLock.Leave();
+			Handler<T> handler = null;
+			Interlocked.CompareExchange(ref handler, Store<T>.Handler, null);
 
-			var cancellationSource = new CancellationTokenSource();
-			var receipt = new Receipt(cancellationSource);
-
-			receipt.Task = handler.Handle(message, cancellationSource.Token);
+			var receipt = new Receipt();
+			handler.Handle(message, receipt);
 			return receipt;
 		}
 
-		public void Handle<T>(Action<T, CancellationToken> action)
+		public void Handle<T>(Action<T> action)
 		{
-			handlers.Add(typeof(T), new LambdaHandler<T>(action));
+			Interlocked.CompareExchange(ref Store<T>.Handler, new LambdaHandler<T>(action), null);
 		}
 
-		public void Handle<T, TResult>(Func<T, CancellationToken, TResult> function)
+		public void Handle<T, TResult>(Func<T, TResult> function)
 		{
-			handlers.Add(typeof(T), new LambdaHandler<T, TResult>(function));
+			Interlocked.CompareExchange(ref Store<T>.Handler, new LambdaHandler<T, TResult>(function), null);
 		}
 
-		public void Handle<T>(Action<T, CancellationToken> action, HandleOption options)
+		public void Handle<T>(Action<T> action, HandleOption options)
 		{
 			if (options.HasFlag(HandleOption.SingleThread))
 			{
-				handlers.Add(typeof(T), new SingleThreadedLambdaHandler<T>(action));
+				Interlocked.CompareExchange(ref Store<T>.Handler, new SingleThreadedLambdaHandler<T>(action), null);
 			}
 			else
 			{
-				handlers.Add(typeof(T), new LambdaHandler<T>(action));
+				Interlocked.CompareExchange(ref Store<T>.Handler, new LambdaHandler<T>(action), null);
 			}
 		}
 
-		public void Handle<T, TResult>(Func<T, CancellationToken, TResult> function, HandleOption options)
+		public void Handle<T, TResult>(Func<T, TResult> function, HandleOption options)
 		{
 			if (options.HasFlag(HandleOption.SingleThread))
 			{
-				handlers.Add(typeof(T), new SingleThreadedLambdaHandler<T, TResult>(function));
+				Interlocked.CompareExchange(ref Store<T>.Handler, new SingleThreadedLambdaHandler<T, TResult>(function), null);
 			}
 			else
 			{
-				handlers.Add(typeof(T), new LambdaHandler<T, TResult>(function));
+				Interlocked.CompareExchange(ref Store<T>.Handler, new LambdaHandler<T, TResult>(function), null);
 			}
 		}
 
@@ -66,7 +62,7 @@ namespace ZeroBugBounce.LightMess
 		{
 			handlerLock.Enter();
 			handler.Message = this;
-			handlers.Add(typeof(T), handler);
+			Interlocked.CompareExchange(ref Store<T>.Handler, handler, null);
 			handlerLock.Leave();
 		}
 
@@ -89,15 +85,18 @@ namespace ZeroBugBounce.LightMess
 				detectedHandlers.Add(new Tuple<Type, Object>(handlerType.BaseType.GetGenericArguments()[0], handler));
 			}
 
-			handlerLock.Enter();
 			foreach (var newHandler in detectedHandlers)
 			{
-				handlers.Add(newHandler.Item1, newHandler.Item2);
+				var type = typeof(Store<>).MakeGenericType(new[] { newHandler.Item1 });
+				var field = type.GetField("Handler");
+				field.SetValue(type, newHandler.Item2);
 			}
-			handlerLock.Leave();
 		}
 
-		Dictionary<Type, Object> handlers = new Dictionary<Type, Object>();
+		internal static class Store<T>
+		{
+			public static Handler<T> Handler;
+		}
 	}
 
 	/// <summary>
@@ -116,22 +115,22 @@ namespace ZeroBugBounce.LightMess
 			return messenger.Post(message);
 		}
 
-		public static void Handle<T>(Action<T, CancellationToken> action)
+		public static void Handle<T>(Action<T> action)
 		{
 			messenger.Handle(action);
 		}
 
-		public static void Handle<T, TResult>(Func<T, CancellationToken, TResult> function)
+		public static void Handle<T, TResult>(Func<T, TResult> function)
 		{
 			messenger.Handle<T, TResult>(function);
 		}
 
-		public static void Handle<T>(Action<T, CancellationToken> action, HandleOption options)
+		public static void Handle<T>(Action<T> action, HandleOption options)
 		{
 			messenger.Handle<T>(action, options);
 		}
 
-		public static void Handle<T, TResult>(Func<T, CancellationToken, TResult> function, HandleOption options)
+		public static void Handle<T, TResult>(Func<T, TResult> function, HandleOption options)
 		{
 			messenger.Handle<T, TResult>(function, options);
 		}

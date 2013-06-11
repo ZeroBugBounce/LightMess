@@ -59,14 +59,14 @@ namespace Testing
 			Account reply = null;
 
 			Message.Init(new Messenger());
-			Message.Handle<NameRequest, Account>((m, c) =>
+			Message.Handle<NameRequest, Account>(m =>
 			{
 				handlerWasCalled = true;
 				return new Account();
 			});
 
 			Message.Post(new NameRequest())
-				.Callback<Account>((t, a) => {
+				.Callback<Account>(a => {
 					System.Diagnostics.Debug.WriteLine("On thread {0}", Thread.CurrentThread.Name);
 					callbackWasCalled = true;
 					reply = a;})
@@ -81,7 +81,7 @@ namespace Testing
 		public void Handle_exceptions()
 		{
 			Message.Init(new Messenger());
-			Message.Handle<object>((t, c) =>
+			Message.Handle<object>(c =>
 			{
 				throw new InvalidOperationException();
 			});

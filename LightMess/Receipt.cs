@@ -6,61 +6,64 @@ namespace ZeroBugBounce.LightMess
 {
 	public class Receipt
 	{
-		CancellationTokenSource cancellation;
+		Delegate callback;
+		Envelope result;
+		long callbackAttempted = 0;
 
-		public Task<Envelope> Task { get; internal set; }
-
-		public Receipt(CancellationTokenSource cancellationSource)
+		internal Receipt()
 		{
-			cancellation = cancellationSource;
-			Task = null;
+
 		}
 
-		public Receipt Cancel()
+		public Receipt Callback(Action callback)
 		{
-			cancellation.Cancel();
-			return this;
-		}
-
-		public Receipt Callback(Action<Task> callback)
-		{
-			Task.ContinueWith(callback, TaskContinuationOptions.ExecuteSynchronously).Wait();
-			return this;
-		}
-
-		public Receipt Callback<TResult>(Action<Task, TResult> callback)
-		{
-			if (Task.IsCanceled)
+			if (Interlocked.Read(ref callbackAttempted) != 0)
 			{
-				Task.ContinueWith(t => callback(t, default(TResult)),
-					TaskContinuationOptions.ExecuteSynchronously).Wait();
+				callback();
 			}
 			else
 			{
-				Task.ContinueWith(t => callback(t, ((Envelope<TResult>)t.Result).Contents), 
-					TaskContinuationOptions.ExecuteSynchronously).Wait();
+				this.callback = callback;
+			}
+
+			return this;
+		}
+
+		public Receipt Callback<TResult>(Action<TResult> callback)
+		{
+			if (Interlocked.Read(ref callbackAttempted) != 0)
+			{
+				callback(((Envelope<TResult>)result).Contents);
+			}
+			else
+			{
+				this.callback = callback;
 			}
 			return this;
 		}
 
-		public TResult Result<TResult>()
+		internal void FireCallback()
 		{
-			return ((Envelope<TResult>)Task.Result).Contents;
-		}
-
-		public bool Wait(TimeSpan timeToWait)
-		{
-			if (timeToWait.TotalMilliseconds > int.MaxValue)
+			if (callback != null)
 			{
-				timeToWait = TimeSpan.FromMilliseconds(int.MaxValue);
+				((Action)callback)();
 			}
 
-			return Task.Wait((int)timeToWait.TotalMilliseconds, cancellation.Token);
+			Interlocked.CompareExchange(ref callbackAttempted, 1, 0);
 		}
 
-		public void Wait()
+		internal void FireCallback<TResult>(TResult result)
 		{
-			Task.Wait(cancellation.Token);
+			if (callback != null)
+			{
+				((Action<TResult>)callback)(result);
+			}
+			else
+			{
+				this.result = new Envelope<TResult>(result);
+			}
+
+			Interlocked.CompareExchange(ref callbackAttempted, 1, 0);
 		}
 	}
 }

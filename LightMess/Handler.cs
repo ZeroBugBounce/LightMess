@@ -11,7 +11,7 @@ namespace ZeroBugBounce.LightMess
 
 	public abstract class Handler<T> : Handler
 	{		
-		public abstract Task<Envelope> Handle(T message, CancellationToken cancellationToken);
+		public abstract void Handle(T message, Receipt receipt);
 	}
 
 	public abstract class Handler<T, TResult> : Handler<T>

@@ -12,118 +12,77 @@ namespace ZeroBugBounce.LightMess
 	/// </summary>
 	public class HttpHandler : Handler<HttpRequest>
 	{
-		public override Task<Envelope> Handle(HttpRequest message, CancellationToken cancellation)
+		public override void Handle(HttpRequest message, Receipt receipt)
 		{
-			var taskCompletionSource = new TaskCompletionSource<Envelope>();
-
-			try
-			{
-				var webRequest = WebRequest.Create(message.Url);
-				webRequest.BeginGetResponse(EndGetResponse, new HttpRequestState(webRequest, taskCompletionSource));
-
-				return taskCompletionSource.Task;
-			}
-			catch (NotSupportedException nsEx)
-			{
-				taskCompletionSource.SetException(nsEx);
-			}
-			catch (ArgumentNullException anEx)
-			{
-				taskCompletionSource.SetException(anEx);
-			}
-			catch (SecurityException sEx)
-			{
-				taskCompletionSource.SetException(sEx);
-			}
-			catch (UriFormatException ufEx)
-			{
-				taskCompletionSource.SetException(ufEx);
-			}
-
-			return null;
+			var webRequest = WebRequest.Create(message.Url);
+			webRequest.BeginGetResponse(EndGetResponse, new HttpRequestState(webRequest, receipt));
 		}
 
 		void EndGetResponse(IAsyncResult asyncResult)
 		{
 			var httpRequestState = asyncResult.AsyncState as HttpRequestState;
 
-			try
-			{
-				var webRequest = httpRequestState.WebRequest;
-				var webResponse = webRequest.EndGetResponse(asyncResult);
+			var webRequest = httpRequestState.WebRequest;
+			var webResponse = webRequest.EndGetResponse(asyncResult);
 
-				var responseStream = webResponse.GetResponseStream();
-				var outStream = new MemoryStream();
-				byte[] buffer = new byte[4096];
+			var responseStream = webResponse.GetResponseStream();
+			var outStream = new MemoryStream();
+			byte[] buffer = new byte[4096];
 
-				responseStream.BeginRead(buffer, 0, 4096, EndRead,
-					new HttpResponseState(webResponse, buffer, outStream, httpRequestState.TaskCompletionSource));
-			}
-			catch (Exception ex)
-			{
-				httpRequestState.TaskCompletionSource.SetException(ex);
-			}
+			responseStream.BeginRead(buffer, 0, 4096, EndRead,
+				new HttpResponseState(webResponse, buffer, outStream, httpRequestState.Receipt));
 		}
 
 		void EndRead(IAsyncResult asyncResult)
 		{
 			var httpResponseState = asyncResult.AsyncState as HttpResponseState;
 
-			try
+			int bytesRead = httpResponseState.WebResponse.GetResponseStream().EndRead(asyncResult);
+			var outStream = httpResponseState.OutStream;
+			byte[] buffer = httpResponseState.Buffer;
+			var responseStream = httpResponseState.WebResponse.GetResponseStream();
+
+			if (bytesRead > 0)
 			{
-				int bytesRead = httpResponseState.WebResponse.GetResponseStream().EndRead(asyncResult);
-				var outStream = httpResponseState.OutStream;
-				byte[] buffer = httpResponseState.Buffer;
-				var responseStream = httpResponseState.WebResponse.GetResponseStream();
-
-				if (bytesRead > 0)
-				{
-					outStream.Write(buffer, 0, bytesRead);
-					responseStream.BeginRead(buffer, 0, 4096, EndRead, httpResponseState);
-				}
-				else
-				{
-					httpResponseState.TaskCompletionSource.TrySetResult(
-						new Envelope<HttpResponse>(new HttpResponse(outStream.ToArray())));
-
-					responseStream.Close();
-					httpResponseState.WebResponse.Close();
-				}
+				outStream.Write(buffer, 0, bytesRead);
+				responseStream.BeginRead(buffer, 0, 4096, EndRead, httpResponseState);
 			}
-			catch (Exception ex)
+			else
 			{
-				httpResponseState.TaskCompletionSource.SetException(ex);
+				responseStream.Close();
+				httpResponseState.WebResponse.Close();
+				httpResponseState.Receipt.FireCallback(new HttpResponse(outStream.ToArray()));
 			}
 		}
 
 		class HttpRequestState
 		{
 			public HttpRequestState(WebRequest webRequest,
-				TaskCompletionSource<Envelope> taskCompletionSource)
+				Receipt receipt)
 			{
 				WebRequest = webRequest;
-				TaskCompletionSource = taskCompletionSource;
+				Receipt = receipt;
 			}
 
 			public WebRequest WebRequest { get; private set; }
-			public TaskCompletionSource<Envelope> TaskCompletionSource { get; set; }
+			public Receipt Receipt { get; set; }
 		}
 
 		class HttpResponseState
 		{
-			public HttpResponseState(WebResponse webResponse, byte[] buffer, 
-				MemoryStream outStream, TaskCompletionSource<Envelope> taskCompletionSource)
+			public HttpResponseState(WebResponse webResponse, byte[] buffer,
+				MemoryStream outStream, Receipt receipt)
 			{
 				WebResponse = webResponse;
 				Buffer = buffer;
 				OutStream = outStream;
-				TaskCompletionSource = taskCompletionSource;
+				Receipt = receipt;
 			}
 
-			public WebResponse WebResponse {get; private set;}
+			public WebResponse WebResponse { get; private set; }
 			public byte[] Buffer { get; set; }
 			public MemoryStream OutStream { get; set; }
-			public TaskCompletionSource<Envelope> TaskCompletionSource { get; set; }
+			public Receipt Receipt { get; set; }
 		}
 	}
 

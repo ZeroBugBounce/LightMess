@@ -14,14 +14,14 @@ namespace Testing
 		{
 			
 			var messenger = new Messenger();
-			messenger.Handle<int, int>((t, c) =>
+			messenger.Handle<int, int>(c =>
 			{
 				throw new InvalidOperationException();
 			});
 
 			Assert.Throws<AggregateException>(() =>
 			{
-				messenger.Post(123).Wait();
+				messenger.Post(123)
 			});
 		}
 	}

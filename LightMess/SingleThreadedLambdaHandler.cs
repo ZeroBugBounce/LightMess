@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -6,48 +7,113 @@ namespace ZeroBugBounce.LightMess
 {
 	public class SingleThreadedLambdaHandler<T> : Handler<T>
 	{
-		SingleThreadedTaskScheduler taskScheduler;
-		Action<T, CancellationToken> handler;
+		Action<T> handler;
+		SingleThreadedDispatcher dispatcher;
 
-		public SingleThreadedLambdaHandler(Action<T, CancellationToken> handlerAction)
-			: this(new SingleThreadedTaskScheduler(), handlerAction) { }
+		public SingleThreadedLambdaHandler(Action<T> handlerAction) : this(handlerAction, new SingleThreadedDispatcher()) { }
 
-		public SingleThreadedLambdaHandler(SingleThreadedTaskScheduler scheduler, Action<T, CancellationToken> handlerAction)
+		public SingleThreadedLambdaHandler(Action<T> handlerAction, SingleThreadedDispatcher singleThreadedDispatcher)
 		{
-			taskScheduler = scheduler;
 			handler = handlerAction;
+			dispatcher = singleThreadedDispatcher;
 		}
 
-		public override Task<Envelope> Handle(T message, CancellationToken cancellationToken)
+		public override void Handle(T message, Receipt receipt)
 		{
-			return Task.Factory.StartNew<Envelope>(() =>
+			dispatcher.Post(() =>
 			{
-				handler(message, cancellationToken);
-				return null; // no reply so nothing needed here
-			}, cancellationToken, TaskCreationOptions.None, taskScheduler);
+				handler(message);
+				receipt.FireCallback();
+			});
 		}
 	}
 
 	public class SingleThreadedLambdaHandler<T, TReply> : Handler<T, TReply>
 	{
-		SingleThreadedTaskScheduler taskScheduler;
-		Func<T, CancellationToken, TReply> handler;
+		Func<T, TReply> handler;
+		SingleThreadedDispatcher dispatcher;
 
-		public SingleThreadedLambdaHandler(Func<T, CancellationToken, TReply> handlerFunction)
-			: this(new SingleThreadedTaskScheduler(), handlerFunction) { }
+		public SingleThreadedLambdaHandler(Func<T, TReply> handlerAction) : this(handlerAction, new SingleThreadedDispatcher()) { }
 
-		public SingleThreadedLambdaHandler(SingleThreadedTaskScheduler scheduler, Func<T, CancellationToken, TReply> handlerFunction)
+		public SingleThreadedLambdaHandler(Func<T, TReply> handlerFunction, SingleThreadedDispatcher singleTheadedDispatcher)
 		{
-			taskScheduler = scheduler;
 			handler = handlerFunction;
+			dispatcher = singleTheadedDispatcher;
 		}
 
-		public override Task<Envelope> Handle(T message, CancellationToken cancellationToken)
+		public override void Handle(T message, Receipt receipt)
 		{
-			return Task.Factory.StartNew<Envelope>(() =>
+			dispatcher.Post(() => receipt.FireCallback(handler(message)));
+		}
+	}
+
+	public class SingleThreadedDispatcher
+	{
+		Thread thread;
+		Queue<Action> queue;
+		readonly Object syncLock = new Object();
+		ManualResetEventSlim startupWaitHandle;
+
+		public bool ExecutingSingleThreaded
+		{
+			get { return Thread.CurrentThread == thread;}
+		}
+
+		public void Post(Action action)
+		{
+			EnsureStarted();
+
+			if (!ExecutingSingleThreaded)
 			{
-				return new Envelope<TReply>(handler(message, cancellationToken));
-			}, cancellationToken, TaskCreationOptions.None, taskScheduler);
+				Monitor.Enter(syncLock);
+				queue.Enqueue(action);
+				Monitor.Pulse(syncLock);
+				Monitor.Exit(syncLock);
+			}
+		}
+
+		public Int32 QueueLength
+		{
+			get
+			{
+				return queue.Count;
+			}
+		}
+
+		void EnsureStarted()
+		{
+			if (thread == null)
+			{
+				startupWaitHandle = new ManualResetEventSlim(false);
+				queue = new Queue<Action>();
+				thread = new Thread(_ => Process());
+				thread.IsBackground = true;
+				thread.Start();
+				startupWaitHandle.Wait();
+			}
+		}
+
+
+		void Process()
+		{
+			Monitor.Enter(syncLock);
+			startupWaitHandle.Set();
+
+			while (true)
+			{
+				Monitor.Wait(syncLock);
+				do
+				{
+					var work = queue.Dequeue();
+					Monitor.Exit(syncLock);
+
+					work();
+
+					Monitor.Enter(syncLock);
+				}
+				while (queue.Count > 0);
+			}
+
 		}
 	}
 }

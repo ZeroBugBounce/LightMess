@@ -14,7 +14,7 @@ namespace ZeroBugBounce.LightMess
 	/// </summary>
 	public class StreamingFileReadHandler : Handler<StreamingFileReadRequest>
 	{
-		public override Task<Envelope> Handle(StreamingFileReadRequest message, CancellationToken cancellation)
+		public override void Handle(StreamingFileReadRequest message, Receipt receipt)
 		{
 			var path = message.Path;
 			var bufferSize = message.BufferSize;
@@ -22,70 +22,45 @@ namespace ZeroBugBounce.LightMess
 			var inStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, true);
 			var buffer = new byte[bufferSize];
 
-			cancellation.Register((tcs) =>
-			{
-				((TaskCompletionSource<Envelope>)tcs).TrySetCanceled();
-			}, taskCompletionSource);
-
-			inStream.BeginRead(buffer, 0, bufferSize, EndRead, new ReadState(path, inStream, buffer, taskCompletionSource, message.ReadCallback));
-
-			return taskCompletionSource.Task;
+			inStream.BeginRead(buffer, 0, bufferSize, EndRead, new ReadState(path, inStream, buffer, receipt, message.ReadCallback));
 		}
 
 		void EndRead(IAsyncResult asyncResult)
 		{
 			var readState = asyncResult.AsyncState as ReadState;
-
-			try 
-			{
-				var task = readState.TaskCompletionSource.Task;
-
-				if (task.IsCanceled) { readState.InStream.Dispose(); return; }
-
 				int bytesRead = readState.InStream.EndRead(asyncResult);
-				if (task.IsCanceled) { readState.InStream.Dispose(); return; }
 
 				if (bytesRead > 0)
 				{
-					if (task.IsCanceled) { readState.InStream.Dispose(); return; }
-
 					// async report back the read data:
-					Task.Factory.StartNew(() =>
+					ThreadPool.QueueUserWorkItem(_ =>
 					{
 						readState.ReadCallback(readState.InStream.Position, readState.Buffer);
 					});
 
-					if (task.IsCanceled) { readState.InStream.Dispose(); return; }
 					readState.InStream.BeginRead(readState.Buffer, 0, 4096, EndRead, readState);
 				}
 				else
 				{
-					if (task.IsCanceled) { readState.InStream.Dispose(); return; }
-
-					readState.TaskCompletionSource.SetResult(new Envelope<StreamingFileReadResponse>(new StreamingFileReadResponse(readState.Path, readState.InStream.Length)));
+					readState.Receipt.FireCallback(new StreamingFileReadResponse(readState.Path, readState.InStream.Length));
 				}
-			}
-			catch(Exception ex)
-			{
-				readState.TaskCompletionSource.SetException(ex);
-			}
 		}
 
 		class ReadState
 		{
-			public ReadState(string path, FileStream inStream, byte[] buffer, TaskCompletionSource<Envelope> taskCompletionSource, Action<Int64, Byte[]> readCallback) 
+			public ReadState(string path, FileStream inStream, byte[] buffer, Receipt receipt, Action<Int64, Byte[]> readCallback) 
 			{
 				Path = path;
 				InStream = inStream;
 				Buffer = buffer;
-				TaskCompletionSource = taskCompletionSource;
+				Receipt = receipt;
 				ReadCallback = readCallback;
 			}
 
 			public string Path { get; set;}
 			public FileStream InStream { get; set; }
 			public byte[] Buffer { get; set;}
-			public TaskCompletionSource<Envelope> TaskCompletionSource { get; set;}
+			public Receipt Receipt { get; set; }
 			public Action<Int64, Byte[]> ReadCallback { get; set; }
 		}
 	}

@@ -20,25 +20,24 @@ namespace ConsoleTestApp
 
 			//Scan();
 
-			//STSchedulerMultipleHandler();
-			//SqlNonQueryHandlerTest();
-			//SqlNonQueryComposableBaseTest();
-			// SqlReaderComposableBaseTest();
-			//var messenger = new Messenger();
-			//messenger.ScanAndLoadHandlers(typeof(Messenger).Assembly);
-			//SqlReaderHandlerErrorTest();
-			//throw new InvalidOperationException();
-			//ErrorHandling();
-			//SqlReaderHandlerTest();
-			//SqlNonQueryHandlerTest();
-			//HttpRequestIOCompletionPortTests();
+			STSchedulerMultipleHandler();
+			SqlNonQueryHandlerTest();
+			SqlNonQueryComposableBaseTest();
+			SqlReaderComposableBaseTest();
+			var messenger = new Messenger();
+			messenger.ScanAndLoadHandlers(typeof(Messenger).Assembly);
+			SqlReaderHandlerErrorTest();
+			ErrorHandling();
+			SqlReaderHandlerTest();
+			SqlNonQueryHandlerTest();
+			HttpRequestIOCompletionPortTests();
 			MessagingSpeedTest();
-			//FileStreamIOCompletionPortsTest();
+			FileStreamIOCompletionPortsTest();
 		}
 
 		static void TaskAll()
 		{
-			
+
 		}
 
 		static void StreamReadLargeFile()
@@ -56,7 +55,7 @@ namespace ConsoleTestApp
 				}
 			}));
 
-			receipt.Callback<StreamingFileReadResponse>((t, r) =>
+			receipt.Callback<StreamingFileReadResponse>(r =>
 			{
 				Console.WriteLine("Total bytes read: {0:0,000}", r.BytesRead);
 				Console.WriteLine("Current working set: {0:0,000}", Process.GetCurrentProcess().WorkingSet64);
@@ -71,7 +70,7 @@ namespace ConsoleTestApp
 
 			var receipt = messenger.Post(new FileReadRequest(largeFilePath));
 
-			receipt.Callback<FileReadResponse>((t, r) =>
+			receipt.Callback<FileReadResponse>(r =>
 			{
 				Console.WriteLine("File size: {0}", r.Contents.Length);
 				Console.WriteLine("Current working set: {0}", Process.GetCurrentProcess().WorkingSet64);
@@ -88,48 +87,13 @@ namespace ConsoleTestApp
 		static void STSchedulerMultipleHandler()
 		{
 			Message.Init(new Messenger());
-			
-		}
-		
-		static void STScheduler()
-		{
-			int count = 2500;
-			Message.Init(new Messenger());
-			Message.AddHandler(new SingleThreadHandler());
-			ArrayList list = ArrayList.Synchronized(new ArrayList());
-			Random rng = new Random();
-						
-			while (count > 0)
-			{
-				ThreadPool.QueueUserWorkItem(state =>
-				{
-					list.Add(state);
-					Message.Post((int)state).Callback<int>((t, r) =>
-					{
-						Thread.Sleep(0);
-						list.Remove(r-1);
-						//Console.WriteLine("Answer is {0}", r);
-					});
-				}, count--);
-			}
 
-			Console.WriteLine("Finished adding tasks");
-
-			Thread.Sleep(10);
-
-			char exitChar = '1';
-
-			while (exitChar != 'x')
-			{
-				Console.WriteLine("{0} items remain: {1}", list.Count, string.Join(",", list.OfType<int>().Select(i => i.ToString()).ToArray()));
-				exitChar = Console.ReadKey(true).KeyChar;
-			}
 		}
 
 		static void ErrorHandling()
 		{
 			var messenger = new Messenger();
-			messenger.Handle<int, int>((m, c) =>
+			messenger.Handle<int, int>(m =>
 			{
 				throw new InvalidOperationException();
 			});
@@ -148,7 +112,7 @@ namespace ConsoleTestApp
 				ConnectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard-jr\SQLEXPRESS;
 				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true")
 			})
-			.Callback<int>((t, r) =>
+			.Callback<int>(r =>
 			{
 				Console.WriteLine("{0} records affected", r);
 			});
@@ -165,7 +129,7 @@ namespace ConsoleTestApp
 				ConnectionBuilder = new SqlConnectionStringBuilder(@"Data Source=howard-jr\SQLEXPRESS;
 				Initial Catalog=LightMess;Trusted_Connection=SSPI;Asynchronous Processing=true")
 			})
-			.Callback<QueryResponse>((t, r) =>
+			.Callback<QueryResponse>(r =>
 			{
 				r.Names.ForEach(Console.WriteLine);
 			});
@@ -184,7 +148,9 @@ namespace ConsoleTestApp
 			var receipt = Message.Post(
 				new SqlReaderRequest(new SqlCommand("SELECT * FROM [GenderByAge]"), connectionBuilder));
 
-			receipt.Callback<SqlReaderResponse>((t, r) =>
+			var waitHandle = new ManualResetEvent(false);
+
+			receipt.Callback<SqlReaderResponse>(r =>
 			{
 				try
 				{
@@ -197,10 +163,11 @@ namespace ConsoleTestApp
 				finally
 				{
 					r.Dispose();
+					waitHandle.Set();
 				}
 			});
 
-			receipt.Wait();
+			waitHandle.WaitOne();
 		}
 
 		static void SqlReaderHandlerTest()
@@ -214,7 +181,8 @@ namespace ConsoleTestApp
 			var receipt = Message.Post(
 				new SqlReaderRequest(new SqlCommand("SELECT * FROM [GenderByAge]"), connectionBuilder));
 
-			receipt.Callback<SqlReaderResponse>((t, r) =>
+			var waitHandle = new ManualResetEvent(false);
+			receipt.Callback<SqlReaderResponse>(r =>
 			{
 				try
 				{
@@ -227,10 +195,11 @@ namespace ConsoleTestApp
 				finally
 				{
 					r.Dispose();
+					waitHandle.Set();
 				}
 			});
 
-			receipt.Wait();
+			waitHandle.WaitOne();
 		}
 
 		static void SqlNonQueryHandlerTest()
@@ -243,21 +212,21 @@ namespace ConsoleTestApp
 
 			var timer = new Stopwatch();
 			timer.Start();
-
+			var waitHandle = new ManualResetEvent(false);
 			var receipt = Message.Post(new SqlNonQueryRequest(new SqlCommand(@"update GenderByAge 
 set Name = Name
 FROM GenderByAge"), connectionBuilder));
-			receipt.Callback<SqlNonQueryResponse>((t, r) =>
+			receipt.Callback<SqlNonQueryResponse>(r =>
 			{
 				Console.WriteLine("{0} records affected", r.AffectedRecords);
 			});
 
-			receipt.Wait();
+			waitHandle.WaitOne();
 			timer.Stop();
 
 			Console.WriteLine("SqlNonQueryHandlerTest took {0:0.00}ms", timer.ElapsedMilliseconds);
 
-			Thread.Sleep(1000);			
+			Thread.Sleep(1000);
 		}
 
 		static void HttpRequestIOCompletionPortTests()
@@ -300,14 +269,17 @@ FROM GenderByAge"), connectionBuilder));
 			timer.Start();
 			for (int i = 0; i < iterations; i++)
 			{
+				var waitHandle = new ManualResetEventSlim();
 				Message.Post(new HttpRequest("http://www.tradingtechnologies.com/"))
-					.Callback<HttpResponse>((t, r) =>
+					.Callback<HttpResponse>(r =>
 					{
 						Console.WriteLine("Received {0:###,###} bytes starting with {1}", r.Data.Length,
 							Encoding.Default.GetString(r.Data, 0, 100));
-					})
-					.Wait();
 
+						waitHandle.Set();
+					});
+
+				waitHandle.Wait();
 			}
 
 			timer.Stop();
@@ -318,9 +290,9 @@ FROM GenderByAge"), connectionBuilder));
 
 		static void MessagingSpeedTest()
 		{
-			int iterations = 200000;
+			int iterations = 10000000;
 			var messenger = new Messenger();
-			messenger.Handle<int, int>((i, c) => i + 1);
+			messenger.Handle<int, int>((i) => i + 1);
 
 			var timer = new Stopwatch();
 			
@@ -328,13 +300,13 @@ FROM GenderByAge"), connectionBuilder));
 			for (int i = 0; i < iterations; i++)
 			{
 				var receipt = messenger.Post(i);
-				receipt.Callback<int>((t, r) => r++);
+				receipt.Callback<int>((r) => r++);
 			}
 			timer.Stop();
 			
 
-			Console.WriteLine("{0} msg took {1} or {2} msg/s or {3}µs", iterations, timer.Elapsed,
-				((double)iterations) / timer.Elapsed.TotalSeconds, 1000 * (timer.Elapsed.TotalMilliseconds / ((double)iterations)));
+			Console.WriteLine("{0} msg took {1} or {2} msg/s or {3}ns", iterations, timer.Elapsed,
+				((double)iterations) / timer.Elapsed.TotalSeconds, 1000000d * (timer.Elapsed.TotalMilliseconds / ((double)iterations)));
 		}
 
 		static void FileStreamIOCompletionPortsTest()
@@ -387,22 +359,9 @@ FROM GenderByAge"), connectionBuilder));
 		}
 	}
 
-	public class SingleThreadHandler : Handler<int, int>
-	{
-		SingleThreadedTaskScheduler scheduler = new SingleThreadedTaskScheduler();
-
-		public override Task<Envelope> Handle(int message, CancellationToken cancellationToken)
-		{
-			return Task<Envelope>.Factory.StartNew(() =>
-			{
-				return new Envelope<int>(message + 1);
-			}, default(CancellationToken), TaskCreationOptions.None, scheduler);
-		}
-	}
-
 	public class CountQueryHandler : SqlNonQueryComposableBase<NonQueryRequest>
 	{
-		public override SqlCommand PrepareCommand(NonQueryRequest message, CancellationToken cancellationToken)
+		public override SqlCommand PrepareCommand(NonQueryRequest message, Receipt receipt)
 		{
 			return new SqlCommand(@"update GenderByAge 
 set Name = Name
@@ -427,12 +386,12 @@ FROM GenderByAge");
 
 	public class ProcessQueryHandler : SqlReaderComposableBase<QueryRequest, QueryResponse>
 	{
-		public override SqlCommand PrepareCommand(QueryRequest message, CancellationToken cancellationToken)
+		public override SqlCommand PrepareCommand(QueryRequest message, Receipt receipt)
 		{
 			return new SqlCommand("SET COUNT ON; SELECT * FROM [GenderByAge]; UPDATE [GenderByAge] WHERE 1 = 0");
 		}
 
-		public override QueryResponse ProcessReader(QueryRequest message, SqlDataReader reader, CancellationToken cancellationToken)
+		public override QueryResponse ProcessReader(QueryRequest message, SqlDataReader reader, Receipt receipt)
 		{
 			var names = new List<string>();
 			while (reader.Read())
