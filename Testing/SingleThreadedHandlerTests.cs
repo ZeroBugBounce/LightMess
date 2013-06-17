@@ -16,7 +16,7 @@ namespace Testing
 
 			Message.Init(new Messenger());
 
-			Message.Handle<int, int>((i, c) =>
+			Message.Handle<int, int>(i =>
 			{
 				if (threadId > -1 && threadId != Thread.CurrentThread.ManagedThreadId)
 				{
@@ -31,7 +31,7 @@ namespace Testing
 			}, HandleOption.SingleThread);
 
 			var wait = new ManualResetEventSlim(false);
-			Message.Post(1).Callback<int>((t, r) =>
+			Message.Post(1).Callback<int>((r) =>
 			{
 				answer = r;
 				wait.Set();

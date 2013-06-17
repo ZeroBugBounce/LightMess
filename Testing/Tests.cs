@@ -18,12 +18,13 @@ namespace Testing
 			bool handlerWasCalled = false;
 
 			Message.Init(new Messenger());
-			Message.Handle<NameRequest>((m, c) =>
+			Message.Handle<NameRequest>((m) =>
 			{
 				handlerWasCalled = true;
 			});
-
-			Message.Post(new NameRequest()).Wait(TimeSpan.MaxValue);
+			var waitHandle = new ManualResetEvent(false);
+			Message.Post(new NameRequest()).Callback(()=> waitHandle.Set());
+			waitHandle.WaitOne();
 			Assert.True(handlerWasCalled);			
 		}
 
@@ -34,19 +35,21 @@ namespace Testing
 			bool callbackWasCalled = false;
 
 			Message.Init(new Messenger());
-			Message.Handle<NameRequest>((m, c) =>
+			Message.Handle<NameRequest>((m) =>
 			{
 				handlerWasCalled = true;
 			});
-
+			var waitHandle = new ManualResetEvent(false);
 			Message.Post(new NameRequest())
-				   .Callback(t => {
+				   .Callback(() =>
+				   {
 					   System.Diagnostics.Debug.WriteLine("On thread {0}", Thread.CurrentThread.Name);
-					   Thread.Sleep(100);  
-					   callbackWasCalled = true; 
-				   })
-				   .Wait(TimeSpan.MaxValue);
+					   Thread.Sleep(100);
+					   callbackWasCalled = true;
+					   waitHandle.Set();
+				   });
 
+			waitHandle.WaitOne();
 			Assert.True(handlerWasCalled);
 			Assert.True(callbackWasCalled);
 		}
@@ -64,13 +67,17 @@ namespace Testing
 				handlerWasCalled = true;
 				return new Account();
 			});
-
+			var waitHandle = new ManualResetEvent(false);
 			Message.Post(new NameRequest())
-				.Callback<Account>(a => {
+				.Callback<Account>(a =>
+				{
 					System.Diagnostics.Debug.WriteLine("On thread {0}", Thread.CurrentThread.Name);
 					callbackWasCalled = true;
-					reply = a;})
-				.Wait();
+					reply = a;
+					waitHandle.Set();
+				});
+
+			waitHandle.WaitOne();
 
 			Assert.True(handlerWasCalled);
 			Assert.True(callbackWasCalled);

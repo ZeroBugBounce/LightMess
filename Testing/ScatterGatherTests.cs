@@ -13,17 +13,14 @@ namespace Testing
 		[Fact]
 		public void Simple_scatter_gather()
 		{
-			int answer1 = 0;
-			char answer2 = char.MinValue;
-
 			var messenger = new Messenger();
 
-			messenger.Handle<int, int>((msg, xxl) =>
+			messenger.Handle<int, int>(msg =>
 			{
 				return msg + 1;
 			});
 
-			messenger.Handle<char, char>((msg, xxl) =>
+			messenger.Handle<char, char>((msg) =>
 			{
 				return (char)(((int)msg) + 1);
 			});

@@ -21,7 +21,7 @@ namespace Testing
 
 			Assert.Throws<AggregateException>(() =>
 			{
-				messenger.Post(123)
+				messenger.Post(123);
 			});
 		}
 	}

@@ -16,23 +16,7 @@ namespace ConsoleTestApp
 	{
 		static void Main(string[] args)
 		{
-			//StreamReadLargeFile();
-
-			//Scan();
-
-			STSchedulerMultipleHandler();
-			SqlNonQueryHandlerTest();
-			SqlNonQueryComposableBaseTest();
-			SqlReaderComposableBaseTest();
-			var messenger = new Messenger();
-			messenger.ScanAndLoadHandlers(typeof(Messenger).Assembly);
-			SqlReaderHandlerErrorTest();
-			ErrorHandling();
-			SqlReaderHandlerTest();
-			SqlNonQueryHandlerTest();
-			HttpRequestIOCompletionPortTests();
 			MessagingSpeedTest();
-			FileStreamIOCompletionPortsTest();
 		}
 
 		static void TaskAll()
